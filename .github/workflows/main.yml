@@ -1,0 +1,71 @@
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  
+jobs:
+  run_pull:
+    name: run pull
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: install ssh keys
+      # check this thread to understand why its needed:
+      # https://stackoverflow.com/a/70447517
+      run: |
+        install -m 600 -D /dev/null ~/.ssh/id_rsa
+        echo "${{ -----BEGIN OPENSSH PRIVATE KEY-----
+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
+-----END OPENSSH PRIVATE KEY----- }}" > ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ 35.175.224.17 }} > ~/.ssh/known_hosts
+    - name: connect and pull
+      run: ssh ${{ bitnami }}@${{ 35.175.224.17 }} "cd ${{ ~/htdocs }} && git checkout ${{ main }} && git pull && exit"
+    - name: cleanup
+      run: rm -rf ~/.ssh
