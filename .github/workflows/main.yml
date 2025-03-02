@@ -64,8 +64,8 @@ HUgEpPU504W/ZNgr6x6lP/JCK9aDNAc3omBTg6oQjB+Zse3uNKrtoVR3aT3/zpWz9mmpGY
 deEo3mgweMZM3DWjd2gpTIYiP2yZYnwmWoKqd9fqCQa6tISf5mLIzzF9Z8uWjgy9D4fBfh
 +7iwiQT3F28AAAAXYml0bmFtaUBpcC0xNzItMjYtNC0yMTABAgME
 -----END OPENSSH PRIVATE KEY----- }}" > ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ 35.175.224.17 }} > ~/.ssh/known_hosts
+        ssh-keyscan -H ${{ 172.26.4.2107 }} > ~/.ssh/known_hosts
     - name: connect and pull
-      run: ssh ${{ bitnami }}@${{ 35.175.224.17 }} "cd ${{ ~/htdocs }} && git checkout ${{ main }} && git pull && exit"
+      run: ssh ${{ bitnami }}@${{ 172.26.4.210 }} "cd ${{ ~/htdocs }} && git checkout ${{ main }} && git pull && exit"
     - name: cleanup
       run: rm -rf ~/.ssh
