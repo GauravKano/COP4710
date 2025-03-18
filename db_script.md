@@ -50,3 +50,13 @@ create table SuperAdmins(
 );
 
 ```
+# triggers
+```
+
+```
+# db Admin login
+USERNAME should be replaced with a username(Ex: Bob) same for PASSWORD
+```
+CREATE USER 'USERNAME'@'%' IDENTIFIED BY 'PASSWORD';
+GRANT ALL PRIVILEGES ON College_Event_Manager.* TO 'USERNAME'@'%';
+```
