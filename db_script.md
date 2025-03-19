@@ -6,7 +6,15 @@ use College_Event_Manager;
 # tables
 ```
 create table Users(
+    UID varchar(20) unique primary key,
+);
 
+create table Users_Comments(
+    UID varchar(20) primary key,
+    text text,
+    rating int,
+    timestamp time,
+    foreign key (UID) referecences Users(UID) on delete cascade
 );
 
 create table Location(
@@ -26,15 +34,18 @@ create table Events(
 );
 
 create table Private_Events(
-
+    Events_ID int auto_increment primary key,
+    foreign key (Events_ID) references Events(Events_ID) on delete cascade
 );
 
 create table Public_Events(
-
+    Events_ID int auto_increment primary key,
+    foreign key (Events_ID) references Events(Events_ID) on delete cascade
 );
 
 create table RSO_Events(
-
+    Events_ID int auto_increment primary key,
+    foreign key (Events_ID) references Events(Events_ID) on delete cascade
 );
 
 create table RSOs(
@@ -42,11 +53,13 @@ create table RSOs(
 );
 
 create table Admins(
-
+    UID varchar(20) primary key,
+    foreign key (UID) references Users(UID) on delete cascade
 );
 
 create table SuperAdmins(
-
+    UID varchar(20) primary key,
+    foreign key (UID) references Users(UID) on delete cascade
 );
 
 ```
