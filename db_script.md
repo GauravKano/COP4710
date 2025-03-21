@@ -7,6 +7,7 @@ use College_Event_Manager;
 ```
 create table Users(
     UID varchar(20) unique primary key,
+    password varchar(100)
 );
 
 create table Users_Comments(
