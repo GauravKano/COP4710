@@ -11,8 +11,8 @@ app.use(bodyParser.json());
 // Create a MySQL connection pool
 const pool = mysql.createPool({
   host: 'localhost',
-  user: 'root', // change <------------------------------------
-  password: 'password', // change <---------------------------
+  user: 'root', 
+  password: 'password', 
   database: 'College_Event_Manager', 
   waitForConnections: true,
   connectionLimit: 10,
