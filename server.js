@@ -22,9 +22,9 @@ app.use((req, res, next) => {
 });
 
 const db = mysql.createConnection({
-  host: 'localhost',
+  host: '35.175.224.17',
   user: 'root',
-  password: 'password',
+  password: '',
   database: 'College_Event_Manager'
 });
 
