@@ -24,7 +24,7 @@ app.use((req, res, next) => {
 const db = mysql.createConnection({
   socketPath: '/run/mysqld/mysqld.sock',
   user: 'root',
-  password: '',
+  password: 'password',
   database: 'College_Event_Manager'
 });
 
