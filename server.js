@@ -22,7 +22,7 @@ app.use((req, res, next) => {
 });
 
 const db = mysql.createConnection({
-  host: '35.175.224.17',
+  socketPath: '/run/mysqld/mysqld.sock',
   user: 'root',
   password: '',
   database: 'College_Event_Manager'
