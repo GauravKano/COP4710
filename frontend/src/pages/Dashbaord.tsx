@@ -1,14 +1,28 @@
 import Navbar from "../components/Navbar";
+import { useState } from "react";
 
 interface Event {
   id: number;
   name: string;
   date: string;
   time: string;
+  description?: string;
+  ratings?: number;
+  contactPhone?: string;
+  contactEmail?: string;
   type: "RSO" | "Private" | "Public";
+  comments?: Comment[];
+}
+
+interface Comment {
+  comment: string;
+  commentId: number;
+  name: string;
 }
 
 const Dashbaord = () => {
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+
   const events: Event[] = [
     {
       id: 1,
@@ -55,6 +69,50 @@ const Dashbaord = () => {
           ))}
         </div>
       </div>
+      {selectedEvent && (
+        <div className="fixed inset-0 bg-black/75 flex justify-center items-center over-flow-y-hidden z-50 h-dvh">
+          <div className="bg-white py-6 px-8 rounded-lg max-w-lg w-full m-4 overflow-y-auto">
+            <h2>{selectedEvent.name}</h2>
+            <p className="">
+              {selectedEvent.date} at {selectedEvent.time}
+            </p>
+            <p className="text-sm font-medium">Type: {selectedEvent.type}</p>
+            <p className="text-sm font-medium">
+              Ratings: {selectedEvent.ratings}
+            </p>
+            <p className="text-sm font-medium">
+              Contact Phone Number: {selectedEvent.contactPhone}
+            </p>
+            <p className="text-sm font-medium">
+              Contact Email: {selectedEvent.contactEmail}
+            </p>
+            <p className="text-sm font-medium">
+              Description: {selectedEvent.description}
+            </p>
+            <div className="flex flex-col mt-2 gap-1.5">
+              <div className="flex items-center justify-between mb-1">
+                <h3>Comments:</h3>
+                <button className="bg-gray-600 text-white px-2 py-1.5 rounded-lg cursor-pointer hover:bg-gray-700">
+                  Add
+                </button>
+              </div>
+              {selectedEvent.comments && selectedEvent.comments.length > 0 ? (
+                selectedEvent.comments.map((comment, index) => (
+                  <div
+                    key={index}
+                    className="border rounded-lg py-1.5 px-2.5 mx-2"
+                  >
+                    <p className="font-semibold">{comment.name}</p>
+                    <p>{comment.comment}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500">No comments yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* <div className="p-6">
         <div className="flex justify-between items-center mb-6">
