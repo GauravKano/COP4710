@@ -71,7 +71,7 @@ const Navbar: React.FC<{ loggedIn: boolean }> = ({ loggedIn }) => {
           </>
         ) : (
           <button
-            className="px-3 py-1.5 rounded-lg hover:bg-gray-400 border cursor-pointer"
+            className="px-3 py-1.5 rounded-lg hover:bg-gray-400 border cursor-pointer ml-auto"
             onClick={handleLogout}
           >
             Logout
