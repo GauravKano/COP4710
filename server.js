@@ -39,7 +39,6 @@ db.connect(err => {
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log('Login attempt for email:', email); // Debug
 
     db.query('SELECT * FROM Users WHERE email = ?', [email], async (err, results) => {
       if (err) {
@@ -48,15 +47,12 @@ app.post('/api/login', async (req, res) => {
       }
 
       if (results.length === 0) {
-        console.log('User not found'); // Debug
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
       const user = results[0];
-      console.log('Stored hash:', user.password); // Debug
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
-      console.log('Password valid?', isPasswordValid); // Debug
       if (!isPasswordValid) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
