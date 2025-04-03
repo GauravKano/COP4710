@@ -200,7 +200,7 @@ app.delete('/api/users/:id', (req, res) => {
 });
 
 // Add University
-app.post('/universities', (req, res) => {
+app.post('/api/universities', (req, res) => {
   try {
     const { name } = req.body;
 
@@ -250,7 +250,7 @@ app.post('/universities', (req, res) => {
 });
 
 // Get All Universities
-app.get('/universities', (req, res) => {
+app.get('/api/universities', (req, res) => {
   try {
     db.query('SELECT * FROM Universities', (err, results) => {
       if (err) {
@@ -266,7 +266,7 @@ app.get('/universities', (req, res) => {
 });
 
 // Get Single University
-app.get('/universities/:id', (req, res) => {
+app.get('/api/universities/:id', (req, res) => {
   try {
     const universityId = req.params.id;
     db.query('SELECT * FROM Universities WHERE id = ?', [universityId], (err, results) => {
@@ -286,7 +286,7 @@ app.get('/universities/:id', (req, res) => {
 });
 
 // Delete University
-app.delete('/universities/:id', (req, res) => {
+app.delete('/api/universities/:id', (req, res) => {
   try {
     const universityId = req.params.id;
 
@@ -587,8 +587,6 @@ app.delete('/api/events/:id', (req, res) => {
   }
 });
 
-
-
-app.listen(3001, '0.0.0.0', () => {
+app.listen(8080, '0.0.0.0', () => {
     console.log("Server is running on port 3001");
   });
