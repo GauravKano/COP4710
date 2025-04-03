@@ -36,7 +36,7 @@ const AddComment: React.FC<{
           <ErrorDialog errorMessage={error} setErrorMessage={setError} />
         )}
         <textarea
-          placeholder="Edit your comment here..."
+          placeholder="Add your comment here"
           rows={4}
           className="w-full px-3 py-1.5 border rounded-md"
           value={commentContent}

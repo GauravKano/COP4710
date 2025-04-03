@@ -2,6 +2,7 @@ import { useNavigate } from "react-router";
 import Navbar from "../components/Navbar";
 import { useEffect, useState } from "react";
 import EventModal from "../components/EventModal";
+import CreateEvent from "../components/CreateEvent";
 
 interface Event {
   id: number;
@@ -48,6 +49,7 @@ const Dashbaord = () => {
   const [selectedEvent, setSelectedEvent] = useState<EventDetails | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [userData, setUserData] = useState<user | null>(null);
+  const [createEventModal, setCreateEventModal] = useState<boolean>(false);
 
   const getCookieData = () => {
     const cookies = document.cookie.split("; ");
@@ -82,9 +84,7 @@ const Dashbaord = () => {
     }
   };
 
-  useEffect(() => {
-    getCookieData();
-
+  const getEventsForUser = () => {
     // Get events for user API here
 
     setEvents([
@@ -107,6 +107,12 @@ const Dashbaord = () => {
         event_type: "private",
       },
     ]);
+  };
+
+  useEffect(() => {
+    getCookieData();
+
+    getEventsForUser();
   }, []);
 
   const handleEventClick = (id: number) => {
@@ -211,7 +217,10 @@ const Dashbaord = () => {
       <div className="flex flex-col py-10 px-12 grow gap-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Events Dashboard</h1>
-          <button className="bg-gray-600 text-white px-3.5 py-2.5 rounded-lg cursor-pointer hover:bg-gray-700">
+          <button
+            className="bg-gray-600 text-white px-3.5 py-2.5 rounded-lg cursor-pointer hover:bg-gray-700"
+            onClick={() => setCreateEventModal(true)}
+          >
             Create Event
           </button>
         </div>
@@ -246,6 +255,15 @@ const Dashbaord = () => {
           userId={userData?.id || 0}
           username={userData?.username || ""}
           setEvent={setSelectedEvent}
+        />
+      )}
+
+      {createEventModal && (
+        <CreateEvent
+          closeModal={() => setCreateEventModal(false)}
+          userId={userData?.id || 0}
+          universityId={userData?.universityId || 0}
+          getEvents={getEventsForUser}
         />
       )}
     </div>
