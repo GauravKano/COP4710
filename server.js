@@ -39,12 +39,8 @@ db.connect(err => {
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt for email:', email); // Debug
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
-
-    // Check if user exists
     db.query('SELECT * FROM Users WHERE email = ?', [email], async (err, results) => {
       if (err) {
         console.error('Database error:', err);
@@ -52,32 +48,21 @@ app.post('/api/login', async (req, res) => {
       }
 
       if (results.length === 0) {
+        console.log('User not found'); // Debug
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
       const user = results[0];
+      console.log('Stored hash:', user.password); // Debug
 
-      // Compare passwords
       const isPasswordValid = await bcrypt.compare(password, user.password);
+      console.log('Password valid?', isPasswordValid); // Debug
       if (!isPasswordValid) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
-      // Successful login
-      const userData = {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        user_type: user.user_type,
-        university_id: user.university_id
-      };
-      
-      res.status(200).json({
-        message: 'Login successful',
-        user: userData
-      });
+      res.status(200).json({ message: 'Login successful', user });
     });
-
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error during login' });
@@ -588,5 +573,5 @@ app.delete('/api/events/:id', (req, res) => {
 });
 
 app.listen(8080, '0.0.0.0', () => {
-    console.log("Server is running on port 3001");
+    console.log("Server is running on port 8080");
   });
