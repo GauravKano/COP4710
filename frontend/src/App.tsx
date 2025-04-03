@@ -1,7 +1,8 @@
 import { BrowserRouter, Route, Routes } from "react-router";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashbaord from "./pages/Dashbaord";
+import Dashboard from "./pages/Dashboard";
+import RsoDashboard from "./pages/RsoDashboard";
 
 function App() {
   return (
@@ -9,7 +10,8 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />}></Route>
         <Route path="/register" element={<Register />}></Route>
-        <Route path="/dashboard" element={<Dashbaord />}></Route>
+        <Route path="/dashboard" element={<Dashboard />}></Route>
+        <Route path="/rsos" element={<RsoDashboard />}></Route>
       </Routes>
     </BrowserRouter>
   );

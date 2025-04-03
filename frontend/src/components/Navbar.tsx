@@ -1,8 +1,9 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import navDropDown from "../assets/navDropdown.svg.svg";
 import { useEffect, useRef, useState } from "react";
 
-const Navbar = () => {
+const Navbar: React.FC<{ loggedIn: boolean }> = ({ loggedIn }) => {
+  const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState<boolean>(false);
   const navDropdown = useRef<HTMLDivElement>(null);
 
@@ -22,6 +23,16 @@ const Navbar = () => {
       document.removeEventListener("click", closeDropdown, true);
     };
   }, [navDropdownOpen]);
+
+  const handleLogout = () => {
+    document.cookie = `userId=; path=/`;
+    document.cookie = `userEmail=; path=/`;
+    document.cookie = `username=; path=/`;
+    document.cookie = `userType=; path=/`;
+    document.cookie = `universityId=; path=/`;
+
+    navigate("/login");
+  };
 
   return (
     <nav className="py-3.5 pl-7 pr-5 bg-gray-300 flex items-center align-middle">
@@ -45,16 +56,27 @@ const Navbar = () => {
             Super Admin
           </button>
         </Link>
-        <Link to="/login" className="ml-auto">
-          <button className="px-3 py-1.5 rounded-lg hover:bg-gray-400 border cursor-pointer">
-            Login
+        {!loggedIn ? (
+          <>
+            <Link to="/login" className="ml-auto">
+              <button className="px-3 py-1.5 rounded-lg hover:bg-gray-400 border cursor-pointer">
+                Login
+              </button>
+            </Link>
+            <Link to="/register">
+              <button className="px-3 py-1.5 rounded-lg hover:bg-gray-400 border cursor-pointer">
+                Register
+              </button>
+            </Link>
+          </>
+        ) : (
+          <button
+            className="px-3 py-1.5 rounded-lg hover:bg-gray-400 border cursor-pointer ml-auto"
+            onClick={handleLogout}
+          >
+            Logout
           </button>
-        </Link>
-        <Link to="/register">
-          <button className="px-3 py-1.5 rounded-lg hover:bg-gray-400 border cursor-pointer">
-            Register
-          </button>
-        </Link>
+        )}
       </div>
 
       <div className="md:hidden ml-auto relative">
@@ -85,16 +107,27 @@ const Navbar = () => {
                 Super Admin
               </button>
             </Link>
-            <Link to="/login">
-              <button className="w-full px-5 py-2.5 hover:bg-gray-400 border-b cursor-pointer">
-                Login
+            {!loggedIn ? (
+              <>
+                <Link to="/login">
+                  <button className="w-full px-5 py-2.5 hover:bg-gray-400 border-b cursor-pointer">
+                    Login
+                  </button>
+                </Link>
+                <Link to="/register">
+                  <button className="w-full px-5 py-2.5 hover:bg-gray-400 cursor-pointer">
+                    Register
+                  </button>
+                </Link>
+              </>
+            ) : (
+              <button
+                className="w-full px-5 py-2.5 hover:bg-gray-400 cursor-pointer"
+                onClick={handleLogout}
+              >
+                Logout
               </button>
-            </Link>
-            <Link to="/register">
-              <button className="w-full px-5 py-2.5 hover:bg-gray-400 cursor-pointer">
-                Register
-              </button>
-            </Link>
+            )}
           </div>
         )}
       </div>
