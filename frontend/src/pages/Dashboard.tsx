@@ -232,8 +232,8 @@ const Dashbaord = () => {
               onClick={() => handleEventClick(event.id)}
             >
               <h2 className="text-lg font-semibold">{event.name}</h2>
-              <p className="">{event.date_time}</p>
-              <p className="text-sm font-medium">
+              <p className="text-sm font-medium">{event.date_time}</p>
+              <p className="text-sm">
                 Type:{" "}
                 <span
                   className={`${
