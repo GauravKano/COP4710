@@ -17,7 +17,7 @@ const AddComment: React.FC<{
     }
 
     //const commentId = Add Comment API here
-    updateComments(0, commentContent);
+    updateComments(0, commentContent.trim());
     closeModal();
   };
 

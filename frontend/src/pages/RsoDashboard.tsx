@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router";
+import JoinRso from "../components/JoinRso";
+import CreateRso from "../components/CreateRso";
 
 type user = {
   id?: number;
@@ -8,7 +10,7 @@ type user = {
   email?: string;
   phone?: string;
   universityId?: number;
-  userType?: "super_admin" | "admin" | "user";
+  userType?: "super_admin" | "admin" | "student";
 };
 
 type Rso = {
@@ -22,6 +24,8 @@ const RsoDashboard = () => {
   const [userData, setUserData] = useState<user | null>(null);
   const [rsos, setRsos] = useState<Rso[]>([]);
   const navigate = useNavigate();
+  const [joinRSO, setJoinRSO] = useState<boolean>(false);
+  const [createRSO, setCreateRSO] = useState<boolean>(false);
 
   const getCookieData = () => {
     const cookies = document.cookie.split("; ");
@@ -42,7 +46,7 @@ const RsoDashboard = () => {
         cookieObject.userType = value.trim() as
           | "super_admin"
           | "admin"
-          | "user";
+          | "student";
       }
       if (key.trim() === "universityId") {
         cookieObject.universityId = parseInt(value.trim());
@@ -105,13 +109,20 @@ const RsoDashboard = () => {
       <div className="flex flex-col py-10 px-12 grow gap-6">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold mr-auto">RSO Dashboard</h1>
-          <button className="bg-gray-600 text-white px-3.5 py-2.5 rounded-lg cursor-pointer hover:bg-gray-700">
+          <button
+            className="bg-gray-600 text-white px-3.5 py-2.5 rounded-lg cursor-pointer hover:bg-gray-700"
+            onClick={() => setJoinRSO(true)}
+          >
             Join RSO
           </button>
-          <button className="bg-gray-600 text-white px-3.5 py-2.5 rounded-lg cursor-pointer hover:bg-gray-700">
+          <button
+            className="bg-gray-600 text-white px-3.5 py-2.5 rounded-lg cursor-pointer hover:bg-gray-700"
+            onClick={() => setCreateRSO(true)}
+          >
             Create RSO
           </button>
         </div>
+
         <div className="flex flex-col gap-4">
           {rsos.map((rso, index) => (
             <div key={index} className="border rounded-lg shadow-sm py-4 px-6">
@@ -125,6 +136,26 @@ const RsoDashboard = () => {
           ))}
         </div>
       </div>
+
+      {joinRSO && (
+        <JoinRso
+          closeModal={() => setJoinRSO(false)}
+          updateRsos={(newRso: Rso) => {
+            setRsos((prev) => [newRso, ...prev]);
+          }}
+        />
+      )}
+
+      {createRSO && (
+        <CreateRso
+          closeModal={() => setCreateRSO(false)}
+          userEmail={userData?.email || ""}
+          userUniversityId={userData?.universityId || 0}
+          userId={userData?.id || 0}
+          userType={userData?.userType || "student"}
+          getRSO={getRso}
+        />
+      )}
     </div>
   );
 };
