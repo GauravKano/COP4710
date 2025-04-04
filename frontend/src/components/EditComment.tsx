@@ -23,7 +23,7 @@ const EditComment: React.FC<{
     }
     //Update Comment API call here
 
-    updateComments(comment.id, commentContent);
+    updateComments(comment.id, commentContent.trim());
     closeModal();
   };
 

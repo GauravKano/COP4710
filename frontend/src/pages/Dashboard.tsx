@@ -41,7 +41,7 @@ type user = {
   email?: string;
   phone?: string;
   universityId?: number;
-  userType?: "super_admin" | "admin" | "user";
+  userType?: "super_admin" | "admin" | "student";
 };
 
 const Dashbaord = () => {
@@ -70,7 +70,7 @@ const Dashbaord = () => {
         cookieObject.userType = value.trim() as
           | "super_admin"
           | "admin"
-          | "user";
+          | "student";
       }
       if (key.trim() === "universityId") {
         cookieObject.universityId = parseInt(value.trim());

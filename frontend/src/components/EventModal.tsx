@@ -166,6 +166,7 @@ const EventModal: React.FC<{
                 <div
                   key={index}
                   className="border rounded-lg py-2.5 px-4 mx-2 flex items-center gap-2"
+                  onClick={() => console.log(comment)}
                 >
                   <div className="grow mr-2">
                     <p className="font-semibold">{comment.name}</p>
@@ -271,6 +272,8 @@ const EventModal: React.FC<{
                 name: username,
                 userId: userId,
               };
+
+              console.log("New Comment Added:", newComment);
 
               return {
                 ...prev,
