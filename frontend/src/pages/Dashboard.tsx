@@ -225,26 +225,32 @@ const Dashbaord = () => {
           </button>
         </div>
         <div className="flex flex-col gap-4">
-          {events.map((event, index) => (
-            <div
-              key={index}
-              className="border rounded-lg shadow-sm py-4 px-6"
-              onClick={() => handleEventClick(event.id)}
-            >
-              <h2 className="text-lg font-semibold">{event.name}</h2>
-              <p className="text-sm font-medium">{event.date_time}</p>
-              <p className="text-sm">
-                Type:{" "}
-                <span
-                  className={`${
-                    event.event_type === "rso" ? "uppercase" : "capitalize"
-                  }`}
+          {events.length === 0 ? (
+            <p className="text-center">No events found.</p>
+          ) : (
+            <>
+              {events.map((event, index) => (
+                <div
+                  key={index}
+                  className="border rounded-lg shadow-sm py-4 px-6"
+                  onClick={() => handleEventClick(event.id)}
                 >
-                  {event.event_type}
-                </span>
-              </p>
-            </div>
-          ))}
+                  <h2 className="text-lg font-semibold">{event.name}</h2>
+                  <p className="text-sm font-medium">{event.date_time}</p>
+                  <p className="text-sm">
+                    Type:{" "}
+                    <span
+                      className={`${
+                        event.event_type === "rso" ? "uppercase" : "capitalize"
+                      }`}
+                    >
+                      {event.event_type}
+                    </span>
+                  </p>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
 

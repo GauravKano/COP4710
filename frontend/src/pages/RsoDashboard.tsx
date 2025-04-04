@@ -124,16 +124,27 @@ const RsoDashboard = () => {
         </div>
 
         <div className="flex flex-col gap-4">
-          {rsos.map((rso, index) => (
-            <div key={index} className="border rounded-lg shadow-sm py-4 px-6">
-              <h2 className="text-lg font-semibold">{rso.name}</h2>
-              <p className="text-sm">
-                Role:{" "}
-                {userData && userData.id === rso.adminId ? "Admin" : "Member"}
-              </p>
-              <p className="text-sm capitalize">Status: {rso.status}</p>
-            </div>
-          ))}
+          {rsos.length === 0 ? (
+            <p className="text-center">No RSOs found.</p>
+          ) : (
+            <>
+              {rsos.map((rso, index) => (
+                <div
+                  key={index}
+                  className="border rounded-lg shadow-sm py-4 px-6"
+                >
+                  <h2 className="text-lg font-semibold">{rso.name}</h2>
+                  <p className="text-sm">
+                    Role:{" "}
+                    {userData && userData.id === rso.adminId
+                      ? "Admin"
+                      : "Member"}
+                  </p>
+                  <p className="text-sm capitalize">Status: {rso.status}</p>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
 
