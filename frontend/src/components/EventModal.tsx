@@ -103,6 +103,12 @@ const EventModal: React.FC<{
             {event.event_type}
           </span>
         </p>
+        {event.event_type === "private" && (
+          <p className="text-sm">University Name: {event.university_name}</p>
+        )}
+        {event.event_type === "rso" && (
+          <p className="text-sm">RSO Name: {event.rso_name}</p>
+        )}
         <p className="text-sm">Ratings: {event.ratings}</p>
         {event.contactPhone && (
           <p className="text-sm">Contact Phone Number: {event.contactPhone}</p>
@@ -193,7 +199,7 @@ const EventModal: React.FC<{
                 </div>
               ))
             ) : (
-              <p className="text-gray-500 text-center">No comments yet.</p>
+              <p className="text-center">No comments yet.</p>
             )}
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router";
 import CreateUniversity from "../components/CreateUniversity";
+import PendingEvents from "../components/PendingEvents";
 
 type user = {
   id?: number;
@@ -18,10 +19,9 @@ type University = {
 };
 
 const SuperAdminDashboard = () => {
-  const [userData, setUserData] = useState<user | null>(null);
   const [universityList, setUniversityList] = useState<University[]>([]);
   const [createUniversity, setCreateUniversity] = useState<boolean>(false);
-  //   const [pendingEvents, setPendingEvents] = useState<boolean>(false);
+  const [pendingEvents, setPendingEvents] = useState<boolean>(false);
   const navigate = useNavigate();
 
   const getCookieData = () => {
@@ -57,7 +57,7 @@ const SuperAdminDashboard = () => {
     ) {
       navigate("/login");
     } else {
-      setUserData(cookieObject);
+      console.log(cookieObject);
     }
   };
 
@@ -83,7 +83,12 @@ const SuperAdminDashboard = () => {
       <div className="flex flex-col py-10 px-12 grow gap-6">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold mr-auto">Super Admin Dashboard</h1>
-          <button className="bg-gray-600 text-white px-3.5 py-2.5 rounded-lg cursor-pointer hover:bg-gray-700">
+          <button
+            className="bg-gray-600 text-white px-3.5 py-2.5 rounded-lg cursor-pointer hover:bg-gray-700"
+            onClick={() => {
+              setPendingEvents(true);
+            }}
+          >
             Pending Events
           </button>
           <button
@@ -95,11 +100,20 @@ const SuperAdminDashboard = () => {
         </div>
 
         <div className="flex flex-col gap-4">
-          {universityList.map((university, index) => (
-            <div key={index} className="border rounded-lg shadow-sm py-4 px-6">
-              <h2 className="text-lg font-semibold">{university.name}</h2>
-            </div>
-          ))}
+          {universityList.length === 0 ? (
+            <p className="text-center">No universities found.</p>
+          ) : (
+            <>
+              {universityList.map((university, index) => (
+                <div
+                  key={index}
+                  className="border rounded-lg shadow-sm py-4 px-6"
+                >
+                  <h2 className="text-lg font-semibold">{university.name}</h2>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
 
@@ -113,6 +127,10 @@ const SuperAdminDashboard = () => {
             ])
           }
         />
+      )}
+
+      {pendingEvents && (
+        <PendingEvents closeModal={() => setPendingEvents(false)} />
       )}
     </div>
   );
