@@ -44,7 +44,7 @@ type user = {
   userType?: "super_admin" | "admin" | "student";
 };
 
-const Dashbaord = () => {
+const Dashboard = () => {
   const navigate = useNavigate();
   const [selectedEvent, setSelectedEvent] = useState<EventDetails | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
@@ -276,4 +276,4 @@ const Dashbaord = () => {
   );
 };
 
-export default Dashbaord;
+export default Dashboard;

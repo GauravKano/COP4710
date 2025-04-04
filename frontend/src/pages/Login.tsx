@@ -1,13 +1,57 @@
 import { Link, useNavigate } from "react-router";
 import ErrorDialog from "../components/ErrorDialog";
 import Navbar from "../components/Navbar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+type user = {
+  id?: number;
+  username?: string;
+  email?: string;
+  phone?: string;
+  universityId?: number;
+  userType?: "super_admin" | "admin" | "student";
+};
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const getCookieData = () => {
+    const cookies = document.cookie.split("; ");
+    const cookieObject: user = {};
+
+    cookies.forEach((cookie) => {
+      const [key, value] = cookie.split("=");
+      if (key.trim() === "userId") {
+        cookieObject.id = parseInt(value.trim());
+      }
+      if (key.trim() === "userEmail") {
+        cookieObject.email = value.trim();
+      }
+      if (key.trim() === "username") {
+        cookieObject.username = value.trim();
+      }
+      if (key.trim() === "userType") {
+        cookieObject.userType = value.trim() as
+          | "super_admin"
+          | "admin"
+          | "student";
+      }
+      if (key.trim() === "universityId") {
+        cookieObject.universityId = parseInt(value.trim());
+      }
+    });
+
+    if (cookieObject && cookieObject.id && cookieObject.userType) {
+      navigate("/dashboard");
+    }
+  };
+
+  useEffect(() => {
+    getCookieData();
+  }, []);
 
   const handleLogin = () => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;

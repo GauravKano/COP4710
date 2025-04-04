@@ -8,6 +8,15 @@ type University = {
   id: number;
 };
 
+type user = {
+  id?: number;
+  username?: string;
+  email?: string;
+  phone?: string;
+  universityId?: number;
+  userType?: "super_admin" | "admin" | "student";
+};
+
 const Register = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("");
@@ -19,7 +28,40 @@ const Register = () => {
     useState<University | null>(null);
   const [universityOptions, setUniversityOptions] = useState<University[]>([]);
 
+  const getCookieData = () => {
+    const cookies = document.cookie.split("; ");
+    const cookieObject: user = {};
+
+    cookies.forEach((cookie) => {
+      const [key, value] = cookie.split("=");
+      if (key.trim() === "userId") {
+        cookieObject.id = parseInt(value.trim());
+      }
+      if (key.trim() === "userEmail") {
+        cookieObject.email = value.trim();
+      }
+      if (key.trim() === "username") {
+        cookieObject.username = value.trim();
+      }
+      if (key.trim() === "userType") {
+        cookieObject.userType = value.trim() as
+          | "super_admin"
+          | "admin"
+          | "student";
+      }
+      if (key.trim() === "universityId") {
+        cookieObject.universityId = parseInt(value.trim());
+      }
+    });
+
+    if (cookieObject && cookieObject.id && cookieObject.userType) {
+      navigate("/dashboard");
+    }
+  };
+
   useEffect(() => {
+    getCookieData();
+
     // Get all universities API here
 
     setUniversityOptions([
