@@ -76,7 +76,7 @@ app.post('/api/register', async (req, res) => {
       });
     }
 
-    // Validate user_type
+    // Check user_type
     if (!['super_admin', 'admin', 'student'].includes(user_type)) {
       return res.status(400).json({ message: 'Invalid user type' });
     }
@@ -145,7 +145,7 @@ app.delete('/api/users/:id', (req, res) => {
 
       const user = results[0];
 
-      // For safety, prevent deletion of super_admin unless absolutely necessary
+      // Super Admin
       if (user.user_type === 'super_admin') {
         return res.status(403).json({ 
           message: 'Cannot delete super_admin account through this endpoint' 
@@ -157,7 +157,7 @@ app.delete('/api/users/:id', (req, res) => {
         if (err) {
           console.error('Database error:', err);
           
-          // Handle foreign key constraint errors
+          // Foreign key constraint errors
           if (err.code === 'ER_ROW_IS_REFERENCED_2') {
             return res.status(409).json({ 
               message: 'Cannot delete user because they have associated records. Delete associated events or transfer ownership first.'
@@ -286,7 +286,7 @@ app.delete('/api/universities/:id', (req, res) => {
         if (err) {
           console.error('Database error:', err);
           
-          // Handle foreign key constraint errors
+          // Foreign key constraint errors
           if (err.code === 'ER_ROW_IS_REFERENCED_2') {
             return res.status(409).json({ 
               message: 'Cannot delete university because it has associated users or events. Delete those first.'
@@ -327,12 +327,12 @@ app.post('/api/events', async (req, res) => {
       created_by
     } = req.body;
 
-    // Validate required fields
+    // Check required fields
     if (!name || !date_time || !location_name || !latitude || !longitude || !event_type || !created_by) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Validate event_type
+    // Check Event type
     if (!['public', 'private', 'rso'].includes(event_type)) {
       return res.status(400).json({ message: 'Invalid event type' });
     }
@@ -458,7 +458,7 @@ app.put('/api/events/:id', async (req, res) => {
 
       const currentEvent = results[0];
 
-      // Validate event_type if provided
+      // Check event type
       if (event_type && !['public', 'private', 'rso'].includes(event_type)) {
         return res.status(400).json({ message: 'Invalid event type' });
       }
@@ -468,7 +468,7 @@ app.put('/api/events/:id', async (req, res) => {
         return res.status(400).json({ message: 'RSO ID is required for RSO events' });
       }
 
-      // Validate status if provided
+      // Check status
       if (status && !['pending', 'approved', 'rejected'].includes(status)) {
         return res.status(400).json({ message: 'Invalid status' });
       }
@@ -566,6 +566,232 @@ app.delete('/api/events/:id', (req, res) => {
     console.error('Delete event error:', error);
     res.status(500).json({ message: 'Server error during event deletion' });
   }
+});
+
+// Add Comment
+app.post('/api/comments', (req, res) => {
+  const { event_id, user_id, content } = req.body;
+
+  // Check fields
+  if (!event_id || !user_id || !content) {
+    return res.status(400).json({ message: 'event_id, user_id, and content are required' });
+  }
+
+  db.query(
+    'INSERT INTO Comments (event_id, user_id, content) VALUES (?, ?, ?)',
+    [event_id, user_id, content],
+    (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to add comment' });
+      }
+      res.status(201).json({ 
+        message: 'Comment added successfully',
+        comment_id: results.insertId 
+      });
+    }
+  );
+});
+
+// Get All Comment
+app.get('/api/comments/:event_id', (req, res) => {
+  const event_id = req.params.event_id;
+
+  db.query(
+    'SELECT * FROM Comments WHERE event_id = ?',
+    [event_id],
+    (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to fetch comments' });
+      }
+      res.status(200).json(results);
+    }
+  );
+});
+
+// Update Comment
+app.put('/api/comments/:id', (req, res) => {
+  const comment_id = req.params.id;
+  const { content } = req.body;
+
+  if (!content) {
+    return res.status(400).json({ message: 'content is required' });
+  }
+
+  db.query(
+    'UPDATE Comments SET content = ? WHERE id = ?',
+    [content, comment_id],
+    (err) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to update comment' });
+      }
+      res.status(200).json({ message: 'Comment updated successfully' });
+    }
+  );
+});
+
+// Delete Comment
+app.delete('/api/comments/:id', (req, res) => {
+  const comment_id = req.params.id;
+
+  db.query(
+    'DELETE FROM Comments WHERE id = ?',
+    [comment_id],
+    (err) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to delete comment' });
+      }
+      res.status(200).json({ message: 'Comment deleted successfully' });
+    }
+  );
+});
+
+// Add RSO
+app.post('/api/rsos', authenticateUser, async (req, res) => {
+  const { name, university_id } = req.body;
+  const user_id = req.user.id;
+  const user_type = req.user.user_type;
+
+  // Check required fields
+  if (!name || !university_id) {
+    return res.status(400).json({ message: 'Name and university_id are required' });
+  }
+
+  try {
+    // Check user belongs to specified university
+    const [user] = await db.promise().query(
+      'SELECT university_id FROM Users WHERE id = ?', 
+      [user_id]
+    );
+    
+    if (user.length === 0 || user[0].university_id !== university_id) {
+      return res.status(403).json({ message: 'University ID mismatch' });
+    }
+
+    // Start transaction
+    await db.promise().beginTransaction();
+
+    // 1. Create RSO
+    const [rsoResult] = await db.promise().query(
+      'INSERT INTO RSOs (name, status, university_id, admin_id) VALUES (?, "active", ?, ?)',
+      [name, university_id, user_id]
+    );
+
+    // 2. Upgrade student to admin if needed
+    if (user_type === 'student') {
+      await db.promise().query(
+        'UPDATE Users SET user_type = "admin" WHERE id = ?',
+        [user_id]
+      );
+    }
+
+    await db.promise().commit();
+
+    res.status(201).json({
+      message: 'RSO created successfully',
+      rso_id: rsoResult.insertId,
+      ...(user_type === 'student' && { new_user_type: 'admin' }) // Only show if upgraded
+    });
+
+  } catch (err) {
+    await db.promise().rollback();
+    console.error('Database error:', err);
+    res.status(500).json({ message: 'Failed to create RSO' });
+  }
+});
+
+// Get RSO based on Uni
+app.get('/api/rsos', authenticateUser, (req, res) => {
+  const user_id = req.user.id;
+  const user_type = req.user.user_type;
+
+  // Only show active RSOs
+  const statusCondition = user_type === 'student' ? 'AND status = "active"' : '';
+
+  db.query(
+    `SELECT r.* FROM RSOs r
+     JOIN Users u ON r.university_id = u.university_id
+     WHERE u.id = ? ${statusCondition}`,
+    [user_id],
+    (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to fetch RSOs' });
+      }
+      res.status(200).json(results);
+    }
+  );
+});
+
+// Update RSO
+app.put('/api/rsos/:id', authenticateUser, (req, res) => {
+  const rso_id = req.params.id;
+  const { name, status } = req.body;
+  const user_id = req.user.id;
+  const user_type = req.user.user_type;
+
+  // Check fields
+  if (!name && !status) {
+    return res.status(400).json({ message: 'Name or status is required' });
+  }
+
+  // Check ownership
+  db.query(
+    'SELECT admin_id FROM RSOs WHERE id = ?',
+    [rso_id],
+    (err, results) => {
+      if (err || (results[0].admin_id !== user_id && user_type !== 'super_admin')) {
+        return res.status(403).json({ message: 'Not authorized to update this RSO' });
+      }
+
+      // Update RSO
+      db.query(
+        'UPDATE RSOs SET name = COALESCE(?, name), status = COALESCE(?, status) WHERE id = ?',
+        [name, status, rso_id],
+        (err) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Failed to update RSO' });
+          }
+          res.status(200).json({ message: 'RSO updated successfully' });
+        }
+      );
+    }
+  );
+});
+
+// Delete RSO
+app.delete('/api/rsos/:id', authenticateUser, (req, res) => {
+  const rso_id = req.params.id;
+  const user_id = req.user.id;
+  const user_type = req.user.user_type;
+
+  // Check ownership
+  db.query(
+    'SELECT admin_id FROM RSOs WHERE id = ?',
+    [rso_id],
+    (err, results) => {
+      if (err || (results[0].admin_id !== user_id && user_type !== 'super_admin')) {
+        return res.status(403).json({ message: 'Not authorized to delete this RSO' });
+      }
+
+      // Delete RSO
+      db.query(
+        'DELETE FROM RSOs WHERE id = ?',
+        [rso_id],
+        (err) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Failed to delete RSO' });
+          }
+          res.status(200).json({ message: 'RSO deleted successfully' });
+        }
+      );
+    }
+  );
 });
 
 app.listen(8080, '0.0.0.0', () => {

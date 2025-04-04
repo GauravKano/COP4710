@@ -23,7 +23,7 @@ CREATE TABLE Users (
 CREATE TABLE RSOs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    status ENUM('pending', 'approved', 'rejected') NOT NULL,
+    status ENUM('active', 'inactive') NOT NULL,
     university_id INT NOT NULL,
     admin_id INT NOT NULL,
     FOREIGN KEY (university_id) REFERENCES Universities(id) ON DELETE CASCADE,
