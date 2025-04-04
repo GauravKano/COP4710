@@ -77,7 +77,32 @@ app.post('/api/login', async (req, res) => {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
-      res.status(200).json({ message: 'Login successful', user });
+      // Create JWT token
+      const token = jwt.sign(
+        {
+          id: user.id,
+          email: user.email,
+          user_type: user.user_type,
+          university_id: user.university_id
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' } // Token expires in 1 hour
+      );
+
+      // Return user info and token
+      const userResponse = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        user_type: user.user_type,
+        university_id: user.university_id
+      };
+
+      res.status(200).json({ 
+        message: 'Login successful', 
+        user: userResponse,
+        token: token 
+      });
     });
   } catch (error) {
     console.error('Login error:', error);
