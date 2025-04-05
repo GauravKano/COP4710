@@ -10,6 +10,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader(
@@ -23,6 +24,7 @@ app.use((req, res, next) => {
   next();
 });
 
+//database connection
 const db = mysql.createConnection({
   socketPath: '/run/mysqld/mysqld.sock',
   user: 'root',
@@ -839,6 +841,174 @@ app.delete('/api/rsos/:id', authenticateUser, (req, res) => {
   );
 });
 
+// Add rating for event 
+app.post('/api/events/:id/ratings', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const { user_id, rating, comment } = req.body;
+
+    if (!user_id || rating === undefined) {
+      return res.status(400).json({ message: 'User ID and rating are required' });
+    }
+
+    // Validate rating range (assuming 1 to 5)
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
+    //Check if events exists
+    db.query('SELECT * FROM Events WHERE id = ?', [eventId], (err, eventResults) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Database error' });
+      }
+      if (eventResults.length === 0) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+
+      // Ensure the user hasn't already rated this event
+      db.query('SELECT * FROM Ratings WHERE event_id = ? AND user_id = ?', [eventId, user_id], (err, ratingResults) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ message: 'Database error' });
+        }
+        if (ratingResults.length > 0) {
+          return res.status(400).json({ message: 'User has already rated this event' });
+        }
+
+        // Insert the new rating
+        db.query(
+          'INSERT INTO Ratings (event_id, user_id, rating, comment) VALUES (?, ?, ?, ?)',
+          [eventId, user_id, rating, comment || null],
+          (err, insertResults) => {
+            if (err) {
+              console.error('Database error:', err);
+              return res.status(500).json({ message: 'Database error' });
+            }
+            res.status(201).json({
+              message: 'Rating submitted successfully',
+              rating_id: insertResults.insertId
+            });
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Rating submission error:', error);
+    res.status(500).json({ message: 'Server error while submitting rating' });
+  }
+});
+
+// Get All Ratings for an Event (with Average Rating)
+app.get('/api/events/:id/ratings', (req, res) => {
+  try {
+    const eventId = req.params.id;
+
+    db.query('SELECT * FROM Ratings WHERE event_id = ?', [eventId], (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Database error' });
+      }
+      
+      let averageRating = null;
+      if (results.length > 0) {
+        const sum = results.reduce((acc, curr) => acc + curr.rating, 0);
+        averageRating = sum / results.length;
+      }
+
+      res.status(200).json({
+        ratings: results,
+        average_rating: averageRating
+      });
+    });
+  } catch (error) {
+    console.error('Error fetching ratings:', error);
+    res.status(500).json({ message: 'Server error while fetching ratings' });
+  }
+});
+
+// Update a Rating for an Event (by user)
+app.put('/api/events/:id/ratings', (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const { user_id, rating, comment } = req.body;
+
+    if (!user_id || rating === undefined) {
+      return res.status(400).json({ message: 'User ID and rating are required' });
+    }
+
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
+    // Check if the rating exists for this user and event
+    db.query('SELECT * FROM Ratings WHERE event_id = ? AND user_id = ?', [eventId, user_id], (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Database error' });
+      }
+      if (results.length === 0) {
+        return res.status(404).json({ message: 'Rating not found for this user and event' });
+      }
+
+      // Update the rating record
+      db.query(
+        'UPDATE Ratings SET rating = ?, comment = ? WHERE event_id = ? AND user_id = ?',
+        [rating, comment || null, eventId, user_id],
+        (err) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Database error' });
+          }
+          res.status(200).json({ message: 'Rating updated successfully' });
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error updating rating:', error);
+    res.status(500).json({ message: 'Server error while updating rating' });
+  }
+});
+
+// Delete a Rating for an Event (by user)
+app.delete('/api/events/:id/ratings', (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const { user_id } = req.body;
+
+    if (!user_id) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    // Verify that the rating exists before deletion
+    db.query('SELECT * FROM Ratings WHERE event_id = ? AND user_id = ?', [eventId, user_id], (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Database error' });
+      }
+      if (results.length === 0) {
+        return res.status(404).json({ message: 'Rating not found for this user and event' });
+      }
+
+      // Delete the rating
+      db.query('DELETE FROM Ratings WHERE event_id = ? AND user_id = ?', [eventId, user_id], (err) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ message: 'Database error' });
+        }
+        res.status(200).json({ message: 'Rating deleted successfully' });
+      });
+    });
+  } catch (error) {
+    console.error('Error deleting rating:', error);
+    res.status(500).json({ message: 'Server error while deleting rating' });
+  }
+});
+
+
 app.listen(8080, '0.0.0.0', () => {
     console.log("Server is running on port 8080");
   });
+
+
+
