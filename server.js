@@ -761,9 +761,12 @@ app.get('/api/events/pendingpublic', authenticateUser, async (req, res) => {
 
     const query = `
       SELECT 
-        id AS event_id,
-        name AS event_name,
-        date_time AS time
+        id,
+        name,
+        date_time AS time,
+        location_name,
+        description,
+        created_by
       FROM Events
       WHERE 
         event_type = 'public' AND
@@ -777,11 +780,18 @@ app.get('/api/events/pendingpublic', authenticateUser, async (req, res) => {
         return res.status(500).json({ message: 'Failed to fetch pending events' });
       }
 
+      if (results.length === 0) {
+        return res.status(200).json([]); // Return empty array instead of "not found"
+      }
+
       // Format the response
       const formattedEvents = results.map(event => ({
-        id: event.event_id,
-        name: event.event_name,
-        time: event.time
+        id: event.id,
+        name: event.name,
+        time: event.time,
+        location: event.location_name,
+        description: event.description,
+        created_by: event.created_by
       }));
 
       res.status(200).json(formattedEvents);
