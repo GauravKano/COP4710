@@ -1308,10 +1308,10 @@ app.post('/api/rsos/:rsoId/join', authenticateUser, async (req, res) => {
       });
     }
 
-    // 2. Check if user is already a member
+    // Check if user is already a member
     const [existingMembership] = await db.promise().query(
       `SELECT id FROM RSO_Members 
-       WHERE rso_id = ? AND user_id = ?`,
+       WHERE rso_id = ? AND student_id = ?`,
       [rsoId, userId]
     );
 
@@ -1321,9 +1321,9 @@ app.post('/api/rsos/:rsoId/join', authenticateUser, async (req, res) => {
       });
     }
 
-    // 3. Add user to RSO
+    // Add user to RSO
     await db.promise().query(
-      `INSERT INTO RSO_Members (rso_id, user_id, joined_at) 
+      `INSERT INTO RSO_Members (rso_id, student_id, joined_at) 
        VALUES (?, ?, NOW())`,
       [rsoId, userId]
     );
@@ -1335,8 +1335,15 @@ app.post('/api/rsos/:rsoId/join', authenticateUser, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Join RSO error:', error);
-    res.status(500).json({ message: 'Server error while joining RSO' });
+    console.error('Join RSO error:', {
+      message: error.message,
+      sql: error.sql,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      message: 'Server error while joining RSO',
+      error: error.message
+    });
   }
 });
 
