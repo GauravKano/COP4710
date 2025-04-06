@@ -961,109 +961,86 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
   const admin_id = req.user.id;
   const user_type = req.user.user_type;
 
-  // Check required fields
+  // Validate inputs
   if (!name || !university_id || !member_emails || !Array.isArray(member_emails)) {
-    return res.status(400).json({ message: 'Name, university_id, and member_emails (array) are required' });
+    return res.status(400).json({ message: 'Name, university_id, and member_emails array are required' });
   }
 
-  // Check minimum members
+  // Need at least 4 other members
   if (member_emails.length < 4) {
-    return res.status(400).json({ message: 'Need at least 4 other members (5 total including creator)' });
+    return res.status(400).json({ message: 'Need at least 4 other members' });
   }
 
   try {
-    // Start transaction
     await db.promise().beginTransaction();
 
-    // Check all member emails exist and belong to the same university
-    const placeholders = member_emails.map(() => '?').join(',');
+    // Check all members exist and belong to same university
     const [members] = await db.promise().query(
-      `SELECT id, email, university_id FROM Users 
-       WHERE email IN (${placeholders})`,
-      member_emails
+      `SELECT id, email, university_id FROM Users WHERE email IN (?)`,
+      [member_emails]
     );
 
     // Check if all emails were found
     if (members.length !== member_emails.length) {
-      const foundEmails = members.map(m => m.email);
-      const missingEmails = member_emails.filter(email => !foundEmails.includes(email));
-      return res.status(400).json({ 
-        message: 'Some members are not registered users',
+      const foundEmails = new Set(members.map(m => m.email));
+      const missingEmails = member_emails.filter(email => !foundEmails.has(email));
+      return res.status(400).json({
+        message: 'Some members not found',
         missing_emails: missingEmails
       });
     }
 
-    // Check all members belong to the same university
-    const invalidUniMembers = members.filter(m => m.university_id !== university_id);
-    if (invalidUniMembers.length > 0) {
-      return res.status(400).json({ 
-        message: 'Some members belong to different universities',
-        invalid_members: invalidUniMembers.map(m => m.email)
+    // Check university consistency
+    const wrongUniversity = members.some(m => m.university_id !== university_id);
+    if (wrongUniversity) {
+      return res.status(400).json({
+        message: 'All members must belong to the same university as the RSO'
       });
     }
 
-    // Include the creator in the member list
-    const allStudentIds = [admin_id, ...members.map(m => m.id)];
-
-    // 2. Create RSO
+    // 2. Create the RSO
     const [rsoResult] = await db.promise().query(
-      'INSERT INTO RSOs (name, status, university_id, admin_id) VALUES (?, "active", ?, ?)',
+      `INSERT INTO RSOs (name, status, university_id, admin_id)
+       VALUES (?, 'active', ?, ?)`,
       [name, university_id, admin_id]
     );
     const rso_id = rsoResult.insertId;
 
-    // 3. Create RSO memberships
-    const memberValues = allStudentIds.map(student_id => [rso_id, student_id]);
+    // 3. Add all members
+    const allMembers = [admin_id, ...members.map(m => m.id)];
+    const memberValues = allMembers.map(student_id => [rso_id, student_id]);
+
     await db.promise().query(
-      'INSERT INTO RSO_Members (rso_id, student_id) VALUES ?',
+      `INSERT INTO RSO_Members (rso_id, student_id) VALUES ?`,
       [memberValues]
     );
 
-    // 4. Upgrade creator to admin if student
+    // 4. Upgrade creator to admin if they were a student
     if (user_type === 'student') {
       await db.promise().query(
-        'UPDATE Users SET user_type = "admin" WHERE id = ?',
+        `UPDATE Users SET user_type = 'admin' WHERE id = ?`,
         [admin_id]
       );
     }
 
     await db.promise().commit();
 
-    res.status(201).json({
+    return res.status(201).json({
       message: 'RSO created successfully',
       rso_id: rso_id,
-      member_count: allStudentIds.length,
+      member_count: allMembers.length,
       ...(user_type === 'student' && { new_user_type: 'admin' })
     });
 
   } catch (err) {
     await db.promise().rollback();
     console.error('Database error:', err);
-    res.status(500).json({ message: 'Failed to create RSO', error: err.message });
+    return res.status(500).json({
+      message: 'Failed to create RSO',
+      error: err.message,
+      sql: err.sql
+    });
   }
-});
-
-// Get RSO based on Uni
-app.get('/api/rsos', authenticateUser, (req, res) => {
-  const user_id = req.user.id;
-  const user_type = req.user.user_type;
-
-  // Only show active RSOs
-  const statusCondition = user_type === 'student' ? 'AND status = "active"' : '';
-
-  db.query(
-    `SELECT r.* FROM RSOs r
-     JOIN Users u ON r.university_id = u.university_id
-     WHERE u.id = ? ${statusCondition}`,
-    [user_id],
-    (err, results) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ message: 'Failed to fetch RSOs' });
-      }
-      res.status(200).json(results);
-    }
-  );
 });
 
 // Update RSO
