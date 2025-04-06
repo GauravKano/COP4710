@@ -1239,15 +1239,22 @@ app.get('/api/user/rsos/notmember', authenticateUser, async (req, res) => {
       WHERE 
         r.university_id = ? AND
         r.id NOT IN (
-          SELECT rso_id FROM RSO_Members WHERE user_id = ?
+          SELECT rso_id FROM RSO_Members WHERE student_id = ?
         )
       ORDER BY r.status DESC, r.name ASC
     `;
 
     db.query(query, [universityId, userId], (err, results) => {
       if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ message: 'Failed to fetch nonmember RSOs' });
+        console.error('Database error:', {
+          error: err.message,
+          sql: err.sql,
+          stack: err.stack
+        });
+        return res.status(500).json({ 
+          message: 'Failed to fetch nonmember RSOs',
+          error: err.message 
+        });
       }
 
       const formattedRSOs = results.map(rso => ({
@@ -1268,7 +1275,10 @@ app.get('/api/user/rsos/notmember', authenticateUser, async (req, res) => {
 
   } catch (error) {
     console.error('Get nonmember RSOs error:', error);
-    res.status(500).json({ message: 'Server error while fetching nonmember RSOs' });
+    res.status(500).json({ 
+      message: 'Server error while fetching nonmember RSOs',
+      error: error.message 
+    });
   }
 });
 
