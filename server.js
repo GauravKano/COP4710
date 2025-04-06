@@ -1003,7 +1003,7 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
     }
 
     // Include the creator in the member list
-    const allMemberIds = [admin_id, ...members.map(m => m.id)];
+    const allStudentIds = [admin_id, ...members.map(m => m.id)];
 
     // 2. Create RSO
     const [rsoResult] = await db.promise().query(
@@ -1012,10 +1012,10 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
     );
     const rso_id = rsoResult.insertId;
 
-    // 3. Create RSO membership
-    const memberValues = allMemberIds.map(user_id => [rso_id, user_id]);
+    // 3. Create RSO memberships
+    const memberValues = allStudentIds.map(student_id => [rso_id, student_id]);
     await db.promise().query(
-      'INSERT INTO RSO_Members (rso_id, user_id) VALUES ?',
+      'INSERT INTO RSO_Members (rso_id, student_id) VALUES ?',
       [memberValues]
     );
 
@@ -1032,14 +1032,14 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
     res.status(201).json({
       message: 'RSO created successfully',
       rso_id: rso_id,
-      member_count: allMemberIds.length,
+      member_count: allStudentIds.length,
       ...(user_type === 'student' && { new_user_type: 'admin' })
     });
 
   } catch (err) {
     await db.promise().rollback();
     console.error('Database error:', err);
-    res.status(500).json({ message: 'Failed to create RSO' });
+    res.status(500).json({ message: 'Failed to create RSO', error: err.message });
   }
 });
 
