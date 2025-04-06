@@ -5,7 +5,7 @@ type Comment = {
   content: string;
   id: number;
   name: string;
-  userId: number;
+  user_id: number;
 };
 
 const EditComment: React.FC<{
@@ -16,15 +16,39 @@ const EditComment: React.FC<{
   const [commentContent, setCommentContent] = useState<string>(comment.content);
   const [error, setError] = useState<string | null>(null);
 
-  const handleUpdateComment = () => {
+  const handleUpdateComment = async () => {
     if (!commentContent.trim()) {
       setError("Comment content cannot be empty.");
       return;
     }
     //Update Comment API call here
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/comments/${comment.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: commentContent.trim(),
+          }),
+        }
+      );
 
-    updateComments(comment.id, commentContent.trim());
-    closeModal();
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to edit comment");
+      }
+
+      updateComments(comment.id, commentContent.trim());
+      closeModal();
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to edit comment"
+      );
+      console.error("Error editing comment:", error);
+    }
   };
 
   return (
