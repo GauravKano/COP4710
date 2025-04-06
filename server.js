@@ -752,61 +752,7 @@ app.get('/api/user/events', authenticateUser, async (req, res) => {
 });
 
 // Get all pending public events
-app.get('/api/events/pendingpublic', authenticateUser, async (req, res) => {
-  try {
-    // Check authorization
-    if (req.user.user_type !== 'admin' && req.user.user_type !== 'super_admin') {
-      return res.status(403).json({ 
-        message: 'Unauthorized: Only admins can view pending events',
-        user_type: req.user.user_type 
-      });
-    }
 
-    const query = `
-      SELECT 
-        id,
-        name,
-        date_time AS time,
-        location_name,
-        description,
-        created_by
-      FROM Events
-      WHERE 
-        event_type = 'public' AND
-        status = 'pending'
-      ORDER BY date_time ASC
-    `;
-
-    // Execute query
-    db.query(query, (err, results) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ 
-          message: 'Database query failed',
-          error: err.message 
-        });
-      }
-
-      const formattedEvents = results.map(event => ({
-        id: event.id,
-        name: event.name,
-        time: event.time,
-        location: event.location_name,
-        description: event.description,
-        created_by: event.created_by
-      }));
-
-      res.status(200).json(formattedEvents);
-    });
-
-  } catch (error) {
-    console.error('Server error:', error);
-    res.status(500).json({ 
-      message: 'Internal server error',
-      error: error.message 
-    });
-  }
-});
 
 // Approve or reject an event
 app.put('/api/events/:eventId/status', authenticateUser, async (req, res) => {
