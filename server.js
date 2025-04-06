@@ -702,7 +702,7 @@ app.get('/api/user/events', authenticateUser, async (req, res) => {
         (
           /* RSO events the user is part of */
           (e.event_type = 'rso' AND e.rso_id IN (
-            SELECT rso_id FROM RSO_Members WHERE user_id = ?
+            SELECT rso_id FROM RSO_Members WHERE student_id = ?
           ))
           OR
           /* Public events from user's university */
@@ -710,16 +710,11 @@ app.get('/api/user/events', authenticateUser, async (req, res) => {
           OR
           /* Private events from user's university */
           (e.event_type = 'private' AND e.university_id = ?)
-          OR
-          /* Private events the user is specifically invited to */
-          (e.event_type = 'private' AND e.id IN (
-            SELECT event_id FROM Event_Invites WHERE user_id = ?
-          ))
         )
       ORDER BY e.date_time ASC
     `;
 
-    db.query(query, [userId, universityId, universityId, userId], (err, results) => {
+    db.query(query, [userId, universityId, universityId], (err, results) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ message: 'Failed to fetch events' });
