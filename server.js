@@ -811,7 +811,7 @@ app.put('/api/events/:eventId/status', authenticateUser, async (req, res) => {
       return res.status(403).json({ message: 'Only admin users can approve/reject events' });
     }
 
-    // Verify the event exists and is pending
+    // Check the event exists and is pending
     const [event] = await db.promise().query(
       `SELECT id, status FROM Events WHERE id = ?`,
       [eventId]
