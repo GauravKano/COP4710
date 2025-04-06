@@ -960,6 +960,7 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
   const { name, university_id, member_emails } = req.body;
   const admin_id = req.user.id;
   const user_type = req.user.user_type;
+  const memberValues = allMemberIds.map(member_id => [rso_id, member_id]);
 
   // Check required fields
   if (!name || !university_id || !member_emails || !Array.isArray(member_emails)) {
@@ -1015,7 +1016,7 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
     // 3. Create RSO memberships
     const memberValues = allMemberIds.map(user_id => [rso_id, user_id]);
     await db.promise().query(
-      'INSERT INTO RSO_Members (rso_id, user_id) VALUES ?',
+      'INSERT INTO RSO_Members (rso_id, member_id) VALUES ?',
       [memberValues]
     );
 
