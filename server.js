@@ -1187,7 +1187,7 @@ app.get('/api/user/rsos', authenticateUser, async (req, res) => {
       JOIN RSO_Members rm ON r.id = rm.rso_id
       JOIN Users u ON r.admin_id = u.id
       LEFT JOIN Universities univ ON r.university_id = univ.id
-      WHERE rm.user_id = ?
+      WHERE rm.student_id = ?
       ORDER BY r.status DESC, r.name ASC
     `;
 
