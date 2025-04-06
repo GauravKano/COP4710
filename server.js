@@ -1007,7 +1007,7 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
 
     // 2. Create RSO
     const [rsoResult] = await db.promise().query(
-      'INSERT INTO RSOs (name, status, university_id, admin_id) VALUES (?, "pending", ?, ?)',
+      'INSERT INTO RSOs (name, status, university_id, admin_id) VALUES (?, "active", ?, ?)',
       [name, university_id, admin_id]
     );
     const rso_id = rsoResult.insertId;
