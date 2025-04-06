@@ -752,7 +752,7 @@ app.get('/api/user/events', authenticateUser, async (req, res) => {
 });
 
 // Get all pending public events
-app.get('/api/events/pendingpublic', authenticateUser, async (req, res) => {
+app.get('/api/pendingpublic/events', authenticateUser, async (req, res) => {
   console.log('Pending events endpoint hit'); // Debug log 1
     
   try {
