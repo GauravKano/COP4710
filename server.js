@@ -753,84 +753,45 @@ app.get('/api/user/events', authenticateUser, async (req, res) => {
 
 // Get all pending public events
 app.get('/api/pendingpublic/events', authenticateUser, async (req, res) => {
-  console.log('Pending events endpoint hit'); // Debug log 1
-    
   try {
-    // 1. Verify admin status with explicit logging
-    console.log('User making request:', {
-      id: req.user.id,
-      type: req.user.user_type
-    });
-    
+    // Check admin status
     if (!['admin', 'super_admin'].includes(req.user.user_type)) {
-      console.log('Access denied - not admin');
       return res.status(403).json({ 
         message: 'Admin access required',
         user_type: req.user.user_type 
       });
     }
 
-    // 2. First verify database connection
-    console.log('Testing database connection...');
-    db.query('SELECT 1 AS connection_test', (connErr) => {
-      if (connErr) {
-        console.error('Database connection failed:', connErr);
+    const query = `
+      SELECT 
+        id,
+        name,
+        date_time AS time
+      FROM Events
+      WHERE 
+        event_type = 'public' COLLATE utf8mb4_general_ci AND
+        status = 'pending' COLLATE utf8mb4_general_ci
+      ORDER BY date_time ASC
+    `;
+
+    db.query(query, (err, results) => {
+      if (err) {
         return res.status(500).json({ 
-          message: 'Database connection error',
-          error: connErr.message 
+          message: 'Query execution failed',
+          error: err.message 
         });
       }
 
-      console.log('Database connection OK - querying events...');
-      
-      // 3. Simplified query with exact field matching
-      const query = `
-        SELECT 
-          id,
-          name,
-          date_time AS time
-        FROM Events
-        WHERE 
-          event_type = 'public' COLLATE utf8mb4_general_ci AND
-          status = 'pending' COLLATE utf8mb4_general_ci
-        ORDER BY date_time ASC
-      `;
+      const response = results.map(event => ({
+        id: event.id,
+        name: event.name,
+        time: event.time
+      }));
 
-      db.query(query, (err, results) => {
-        console.log('Query executed. Results:', {
-          error: err,
-          rowCount: results?.length
-        });
-
-        if (err) {
-          console.error('Query failed:', {
-            sql: err.sql,
-            code: err.code,
-            message: err.message
-          });
-          return res.status(500).json({ 
-            message: 'Query execution failed',
-            error: err.message 
-          });
-        }
-
-        // 4. Always return array (empty if no results)
-        const response = results.map(event => ({
-          id: event.id,
-          name: event.name,
-          time: event.time
-        }));
-
-        console.log('Sending response:', response);
-        res.status(200).json(response);
-      });
+      res.status(200).json(response);
     });
 
   } catch (error) {
-    console.error('Unexpected error:', {
-      message: error.message,
-      stack: error.stack
-    });
     res.status(500).json({ 
       message: 'Internal server error',
       error: error.message 
@@ -842,8 +803,7 @@ app.get('/api/pendingpublic/events', authenticateUser, async (req, res) => {
 app.put('/api/events/:eventId/status', authenticateUser, async (req, res) => {
   try {
     const eventId = req.params.eventId;
-    const { approved } = req.body; // boolean
-    const userId = req.user.id;
+    const { approved } = req.body;
     const userType = req.user.user_type;
 
     // Only allow admins to approve/reject events
@@ -871,17 +831,14 @@ app.put('/api/events/:eventId/status', authenticateUser, async (req, res) => {
     // Update the event status
     const newStatus = approved ? 'approved' : 'rejected';
     await db.promise().query(
-      `UPDATE Events 
-       SET status = ?, reviewed_by = ?, reviewed_at = NOW()
-       WHERE id = ?`,
-      [newStatus, userId, eventId]
+      `UPDATE Events SET status = ? WHERE id = ?`,
+      [newStatus, eventId]
     );
 
     res.status(200).json({ 
       message: `Event ${newStatus} successfully`,
       event_id: eventId,
-      new_status: newStatus,
-      reviewed_by: userId
+      new_status: newStatus
     });
 
   } catch (error) {
