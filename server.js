@@ -754,42 +754,56 @@ app.get('/api/user/events', authenticateUser, async (req, res) => {
 // Get all pending public events
 app.get('/api/events/pendingpublic', authenticateUser, async (req, res) => {
   try {
-    // Check admin status
-    if (!['admin', 'super_admin'].includes(req.user.user_type)) {
-      return res.status(403).json({ message: 'Admin access required' });
+    // Check authorization
+    if (req.user.user_type !== 'admin' && req.user.user_type !== 'super_admin') {
+      return res.status(403).json({ 
+        message: 'Unauthorized: Only admins can view pending events',
+        user_type: req.user.user_type 
+      });
     }
 
     const query = `
       SELECT 
         id,
         name,
-        UNIX_TIMESTAMP(date_time) AS timestamp,
-        created_by,
-        description
+        date_time AS time,
+        location_name,
+        description,
+        created_by
       FROM Events
       WHERE 
-        event_type = 'public' COLLATE utf8mb4_general_ci AND
-        status = 'pending' COLLATE utf8mb4_general_ci
+        event_type = 'public' AND
+        status = 'pending'
       ORDER BY date_time ASC
     `;
 
-    const [results] = await db.promise().query(query);
+    // Execute query
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ 
+          message: 'Database query failed',
+          error: err.message 
+        });
+      }
 
-    const events = results.map(event => ({
-      id: event.id,
-      name: event.name,
-      time: new Date(event.timestamp * 1000).toISOString(),
-      creator: event.created_by,
-      description: event.description || ''
-    }));
+      const formattedEvents = results.map(event => ({
+        id: event.id,
+        name: event.name,
+        time: event.time,
+        location: event.location_name,
+        description: event.description,
+        created_by: event.created_by
+      }));
 
-    return res.status(200).json(events);
+      res.status(200).json(formattedEvents);
+    });
 
   } catch (error) {
-    console.error('Endpoint failed:', error);
-    return res.status(500).json({ 
-      message: 'Failed to fetch events',
-      error: error.message
+    console.error('Server error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message 
     });
   }
 });
