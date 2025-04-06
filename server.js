@@ -971,67 +971,54 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
   }
 
   try {
-    // Debug: Verify database connection
+    // 1. Verify database connection
     const [dbInfo] = await db.promise().query('SELECT DATABASE() as db');
     console.log('Connected to database:', dbInfo[0].db);
 
+    // 2. Verify table access
+    const [tables] = await db.promise().query('SHOW TABLES LIKE "RSO_Members"');
+    if (tables.length === 0) {
+      throw new Error('RSO_Members table not found in current database');
+    }
+
     await db.promise().beginTransaction();
 
-    // check members exist
+    // 3. Verify members
     const [members] = await db.promise().query(
       `SELECT id, email, university_id FROM Users WHERE email IN (?)`,
       [member_emails]
     );
 
-    // Check all emails were found
     if (members.length !== member_emails.length) {
-      const foundEmails = new Set(members.map(m => m.email));
-      const missingEmails = member_emails.filter(email => !foundEmails.has(email));
-      return res.status(400).json({
+      const missing = member_emails.filter(e => !members.some(m => m.email === e));
+      return res.status(400).json({ 
         message: 'Some members not found',
-        missing_emails: missingEmails
+        missing_emails: missing
       });
     }
 
-    // Check university consistency
-    const wrongUniversity = members.some(m => m.university_id !== university_id);
-    if (wrongUniversity) {
-      return res.status(400).json({
-        message: 'All members must belong to the same university'
-      });
-    }
-
-    // 2. Create the RSO
+    // 4. Create RSO with explicit database prefix
     const [rsoResult] = await db.promise().query(
-      `INSERT INTO RSOs (name, status, university_id, admin_id)
+      `INSERT INTO College_Event_Manager.RSOs (name, status, university_id, admin_id)
        VALUES (?, 'active', ?, ?)`,
       [name, university_id, admin_id]
     );
     const rso_id = rsoResult.insertId;
 
-    // 3. Debug Check table structure
-    try {
-      const [tableInfo] = await db.promise().query('SHOW CREATE TABLE RSO_Members');
-      console.log('RSO_Members table structure:', tableInfo[0]['Create Table']);
-    } catch (err) {
-      console.error('Error checking table structure:', err);
-    }
-
-    // 4. Add members with error handling
+    // 5. Add members with explicit database prefix
     const allMembers = [admin_id, ...members.map(m => m.id)];
     const memberValues = allMembers.map(student_id => [rso_id, student_id]);
 
-    // Using backticks for safety
     await db.promise().query(
-      'INSERT INTO `RSO_Members` (`rso_id`, `student_id`) VALUES ?',
+      `INSERT INTO College_Event_Manager.RSO_Members (rso_id, student_id) VALUES ?`,
       [memberValues]
     );
 
-    // 5. Upgrade creator to admin if student
+    // 6. Upgrade creator if needed
     if (user_type === 'student') {
       await db.promise().query(
-        'UPDATE Users SET user_type = ? WHERE id = ?',
-        ['admin', admin_id]
+        `UPDATE College_Event_Manager.Users SET user_type = 'admin' WHERE id = ?`,
+        [admin_id]
       );
     }
 
@@ -1046,12 +1033,21 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
 
   } catch (err) {
     await db.promise().rollback();
-    console.error('Full error details:', {
-      message: err.message,
+    console.error('Database operation failed:', {
+      error: err.message,
       code: err.code,
       sql: err.sql,
       stack: err.stack
     });
+
+    // Special handling for permission errors
+    if (err.code === 'ER_DBACCESS_DENIED_ERROR' || err.code === 'ER_TABLEACCESS_DENIED_ERROR') {
+      return res.status(403).json({
+        message: 'Database permission denied',
+        solution: 'Check MySQL user permissions for INSERT operations'
+      });
+    }
+
     return res.status(500).json({
       message: 'Failed to create RSO',
       error: err.message,
