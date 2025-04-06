@@ -754,18 +754,22 @@ app.get('/api/user/events', authenticateUser, async (req, res) => {
 // Get all pending public events
 app.get('/api/events/pendingpublic', authenticateUser, async (req, res) => {
   try {
-    // Only allow admins to view pending events
-    if (req.user.user_type !== 'admin' && req.user.user_type !== 'super_admin') {
+    console.log('User making request:', req.user);
+    
+    // Check admin status
+    if (!['admin', 'super_admin'].includes(req.user.user_type)) {
+      console.log('Access denied for user type:', req.user.user_type);
       return res.status(403).json({ message: 'Only admin users can view pending events' });
     }
 
+    console.log('Querying database for pending public events...');
+    
     const query = `
       SELECT 
         id,
         name,
         date_time AS time,
-        location_name,
-        description,
+        created_at,
         created_by
       FROM Events
       WHERE 
@@ -776,21 +780,30 @@ app.get('/api/events/pendingpublic', authenticateUser, async (req, res) => {
 
     db.query(query, (err, results) => {
       if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ message: 'Failed to fetch pending events' });
+        console.error('Database error:', {
+          error: err,
+          sql: err.sql,
+          stack: err.stack
+        });
+        return res.status(500).json({ 
+          message: 'Database error',
+          error: err.message 
+        });
       }
 
-      if (results.length === 0) {
-        return res.status(200).json([]); // Return empty array instead of "not found"
+      console.log(`Found ${results.length} pending public events`);
+      console.log('Results:', results);
+
+      if (!results || results.length === 0) {
+        console.log('No pending public events found');
+        return res.status(200).json([]);
       }
 
-      // Format the response
       const formattedEvents = results.map(event => ({
         id: event.id,
         name: event.name,
         time: event.time,
-        location: event.location_name,
-        description: event.description,
+        created_at: event.created_at,
         created_by: event.created_by
       }));
 
@@ -798,8 +811,14 @@ app.get('/api/events/pendingpublic', authenticateUser, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get pending events error:', error);
-    res.status(500).json({ message: 'Server error while fetching pending events' });
+    console.error('Endpoint error:', {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      message: 'Server error',
+      error: error.message 
+    });
   }
 });
 
