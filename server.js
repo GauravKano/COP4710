@@ -58,6 +58,11 @@ const authenticateUser = (req, res, next) => {
   });
 };
 
+/* -------------------------------------------------------------------------- */
+/*                                user                                        */
+/* -------------------------------------------------------------------------- */
+
+// Login
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -227,6 +232,10 @@ app.delete('/api/users/:id', (req, res) => {
   }
 });
 
+/* -------------------------------------------------------------------------- */
+/*                                univeristy                                  */
+/* -------------------------------------------------------------------------- */
+
 // Add University
 app.post('/api/universities', (req, res) => {
   try {
@@ -356,6 +365,10 @@ app.delete('/api/universities/:id', (req, res) => {
   }
 });
 
+/* -------------------------------------------------------------------------- */
+/*                                event                                       */
+/* -------------------------------------------------------------------------- */
+
 // Add Event
 app.post('/api/events', async (req, res) => {
   try {
@@ -384,17 +397,22 @@ app.post('/api/events', async (req, res) => {
       return res.status(400).json({ message: 'Invalid event type' });
     }
 
-    // If event_type is 'rso', rso_id must be provided
     if (event_type === 'rso' && !rso_id) {
       return res.status(400).json({ message: 'RSO ID is required for RSO events' });
+    }
+
+    let status = 'pending';
+    if (event_type === 'rso' || event_type === 'private') {
+      status = 'approved';
     }
 
     // Insert new event
     db.query(
       `INSERT INTO Events (
         name, description, date_time, location_name, latitude, longitude,
-        contact_phone, contact_email, event_type, rso_id, university_id, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        contact_phone, contact_email, event_type, rso_id, university_id, 
+        created_by, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
         description || null,
@@ -407,7 +425,8 @@ app.post('/api/events', async (req, res) => {
         event_type,
         rso_id || null,
         university_id || null,
-        created_by
+        created_by,
+        status
       ],
       (err, results) => {
         if (err) {
@@ -458,15 +477,58 @@ app.get('/api/events', (req, res) => {
 app.get('/api/events/:id', (req, res) => {
   try {
     const eventId = req.params.id;
-    db.query('SELECT * FROM Events WHERE id = ?', [eventId], (err, results) => {
+    
+    // First get the event
+    db.query('SELECT * FROM Events WHERE id = ?', [eventId], (err, eventResults) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ message: 'Failed to fetch event' });
       }
-      if (results.length === 0) {
+      if (eventResults.length === 0) {
         return res.status(404).json({ message: 'Event not found' });
       }
-      res.status(200).json(results[0]);
+      
+      const event = eventResults[0];
+      const responseEvent = { ...event };
+      
+      // If university id exists, get university name
+      if (event.university_id) {
+        db.query('SELECT name FROM Universities WHERE id = ?', [event.university_id], (err, uniResults) => {
+          if (err) {
+            console.error('Database error fetching university:', err);
+            checkRSO();
+            return;
+          }
+          
+          if (uniResults.length > 0) {
+            responseEvent.university_name = uniResults[0].name;
+          }
+          
+          checkRSO();
+        });
+      } else {
+        checkRSO();
+      }
+      
+      function checkRSO() {
+        // If rso id exists get RSO name
+        if (event.rso_id) {
+          db.query('SELECT name FROM RSOs WHERE id = ?', [event.rso_id], (err, rsoResults) => {
+            if (err) {
+              console.error('Database error fetching RSO:', err);
+              return res.status(200).json(responseEvent);
+            }
+            
+            if (rsoResults.length > 0) {
+              responseEvent.rso_name = rsoResults[0].name;
+            }
+            
+            res.status(200).json(responseEvent);
+          });
+        } else {
+          res.status(200).json(responseEvent);
+        }
+      }
     });
   } catch (error) {
     console.error('Get event error:', error);
@@ -615,6 +677,183 @@ app.delete('/api/events/:id', (req, res) => {
   }
 });
 
+// Get all events for the corresponding user
+app.get('/api/user/events', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const universityId = req.user.university_id;
+
+    const query = `
+      SELECT 
+        e.id AS event_id,
+        e.name AS event_name,
+        e.event_type,
+        e.date_time,
+        e.location_name,
+        e.latitude,
+        e.longitude,
+        u.name AS university_name,
+        r.name AS rso_name
+      FROM Events e
+      LEFT JOIN Universities u ON e.university_id = u.id
+      LEFT JOIN RSOs r ON e.rso_id = r.id
+      WHERE 
+        (e.status = 'approved') AND
+        (
+          /* RSO events the user is part of */
+          (e.event_type = 'rso' AND e.rso_id IN (
+            SELECT rso_id FROM RSO_Members WHERE user_id = ?
+          ))
+          OR
+          /* Public events from user's university */
+          (e.event_type = 'public' AND e.university_id = ?)
+          OR
+          /* Private events from user's university */
+          (e.event_type = 'private' AND e.university_id = ?)
+          OR
+          /* Private events the user is specifically invited to */
+          (e.event_type = 'private' AND e.id IN (
+            SELECT event_id FROM Event_Invites WHERE user_id = ?
+          ))
+        )
+      ORDER BY e.date_time ASC
+    `;
+
+    db.query(query, [userId, universityId, universityId, userId], (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to fetch events' });
+      }
+
+      const formattedEvents = results.map(event => ({
+        id: event.event_id,
+        name: event.event_name,
+        type: event.event_type,
+        time: event.date_time,
+        location: {
+          name: event.location_name,
+          coordinates: {
+            latitude: event.latitude,
+            longitude: event.longitude
+          }
+        },
+        university: event.university_id ? {
+          id: event.university_id,
+          name: event.university_name
+        } : null,
+        rso: event.rso_id ? {
+          id: event.rso_id,
+          name: event.rso_name
+        } : null
+      }));
+
+      res.status(200).json(formattedEvents);
+    });
+
+  } catch (error) {
+    console.error('Get user events error:', error);
+    res.status(500).json({ message: 'Server error while fetching user events' });
+  }
+});
+
+// Get all pending public events
+app.get('/api/events/pendingpublic', authenticateUser, async (req, res) => {
+  try {
+    // Only allow admins to view pending events
+    if (req.user.user_type !== 'admin' && req.user.user_type !== 'super_admin') {
+      return res.status(403).json({ message: 'Only admin users can view pending events' });
+    }
+
+    const query = `
+      SELECT 
+        id AS event_id,
+        name AS event_name,
+        date_time AS time
+      FROM Events
+      WHERE 
+        event_type = 'public' AND
+        status = 'pending'
+      ORDER BY date_time ASC
+    `;
+
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to fetch pending events' });
+      }
+
+      // Format the response
+      const formattedEvents = results.map(event => ({
+        id: event.event_id,
+        name: event.event_name,
+        time: event.time
+      }));
+
+      res.status(200).json(formattedEvents);
+    });
+
+  } catch (error) {
+    console.error('Get pending events error:', error);
+    res.status(500).json({ message: 'Server error while fetching pending events' });
+  }
+});
+
+// Approve or reject an event
+app.put('/api/events/:eventId/status', authenticateUser, async (req, res) => {
+  try {
+    const eventId = req.params.eventId;
+    const { approved } = req.body; // boolean
+    const userId = req.user.id;
+    const userType = req.user.user_type;
+
+    // Only allow admins to approve/reject events
+    if (userType !== 'admin' && userType !== 'super_admin') {
+      return res.status(403).json({ message: 'Only admin users can approve/reject events' });
+    }
+
+    // Verify the event exists and is pending
+    const [event] = await db.promise().query(
+      `SELECT id, status FROM Events WHERE id = ?`,
+      [eventId]
+    );
+
+    if (event.length === 0) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    if (event[0].status !== 'pending') {
+      return res.status(400).json({ 
+        message: 'Event is not in pending status',
+        current_status: event[0].status
+      });
+    }
+
+    // Update the event status
+    const newStatus = approved ? 'approved' : 'rejected';
+    await db.promise().query(
+      `UPDATE Events 
+       SET status = ?, reviewed_by = ?, reviewed_at = NOW()
+       WHERE id = ?`,
+      [newStatus, userId, eventId]
+    );
+
+    res.status(200).json({ 
+      message: `Event ${newStatus} successfully`,
+      event_id: eventId,
+      new_status: newStatus,
+      reviewed_by: userId
+    });
+
+  } catch (error) {
+    console.error('Update event status error:', error);
+    res.status(500).json({ message: 'Server error while updating event status' });
+  }
+});
+
+/* -------------------------------------------------------------------------- */
+/*                                comment                                     */
+/* -------------------------------------------------------------------------- */
+
 // Add Comment
 app.post('/api/comments', (req, res) => {
   const { event_id, user_id, content } = req.body;
@@ -645,14 +884,30 @@ app.get('/api/comments/:event_id', (req, res) => {
   const event_id = req.params.event_id;
 
   db.query(
-    'SELECT * FROM Comments WHERE event_id = ?',
+    `SELECT c.*, u.id as user_id, u.username 
+     FROM Comments c
+     JOIN Users u ON c.user_id = u.id
+     WHERE c.event_id = ?
+     ORDER BY c.created_at DESC`,
     [event_id],
     (err, results) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ message: 'Failed to fetch comments' });
       }
-      res.status(200).json(results);
+      
+      const formattedComments = results.map(comment => ({
+        id: comment.id,
+        event_id: comment.event_id,
+        content: comment.content,
+        created_at: comment.created_at,
+        user: {
+          id: comment.user_id,
+          username: comment.username
+        }
+      }));
+      
+      res.status(200).json(formattedComments);
     }
   );
 });
@@ -696,51 +951,89 @@ app.delete('/api/comments/:id', (req, res) => {
   );
 });
 
+/* -------------------------------------------------------------------------- */
+/*                                rso                                         */
+/* -------------------------------------------------------------------------- */
+
 // Add RSO
 app.post('/api/rsos', authenticateUser, async (req, res) => {
-  const { name, university_id } = req.body;
-  const user_id = req.user.id;
+  const { name, university_id, member_emails } = req.body;
+  const admin_id = req.user.id;
   const user_type = req.user.user_type;
 
   // Check required fields
-  if (!name || !university_id) {
-    return res.status(400).json({ message: 'Name and university_id are required' });
+  if (!name || !university_id || !member_emails || !Array.isArray(member_emails)) {
+    return res.status(400).json({ message: 'Name, university_id, and member_emails (array) are required' });
+  }
+
+  // Check minimum members
+  if (member_emails.length < 4) {
+    return res.status(400).json({ message: 'Need at least 4 other members (5 total including creator)' });
   }
 
   try {
-    // Check user belongs to specified university
-    const [user] = await db.promise().query(
-      'SELECT university_id FROM Users WHERE id = ?', 
-      [user_id]
-    );
-    
-    if (user.length === 0 || user[0].university_id !== university_id) {
-      return res.status(403).json({ message: 'University ID mismatch' });
-    }
-
     // Start transaction
     await db.promise().beginTransaction();
 
-    // 1. Create RSO
-    const [rsoResult] = await db.promise().query(
-      'INSERT INTO RSOs (name, status, university_id, admin_id) VALUES (?, "active", ?, ?)',
-      [name, university_id, user_id]
+    // Check all members are real users and are in same university
+    const placeholders = member_emails.map(() => '?').join(',');
+    const [members] = await db.promise().query(
+      `SELECT id, email, university_id FROM Users 
+       WHERE email IN (${placeholders})`,
+      member_emails
     );
 
-    // 2. Upgrade student to admin if needed
+    // Check if all emails were found
+    if (members.length !== member_emails.length) {
+      const foundEmails = members.map(m => m.email);
+      const missingEmails = member_emails.filter(email => !foundEmails.includes(email));
+      return res.status(400).json({ 
+        message: 'Some members are not registered users',
+        missing_emails: missingEmails
+      });
+    }
+
+    // Check all members belong to the same university
+    const invalidUniMembers = members.filter(m => m.university_id !== university_id);
+    if (invalidUniMembers.length > 0) {
+      return res.status(400).json({ 
+        message: 'Some members belong to different universities',
+        invalid_members: invalidUniMembers.map(m => m.email)
+      });
+    }
+
+    // Include the creator in the member list
+    const allMemberIds = [admin_id, ...members.map(m => m.id)];
+
+    // 2. Create RSO
+    const [rsoResult] = await db.promise().query(
+      'INSERT INTO RSOs (name, status, university_id, admin_id) VALUES (?, "pending", ?, ?)',
+      [name, university_id, admin_id]
+    );
+    const rso_id = rsoResult.insertId;
+
+    // 3. Create RSO memberships
+    const memberValues = allMemberIds.map(user_id => [rso_id, user_id]);
+    await db.promise().query(
+      'INSERT INTO RSO_Members (rso_id, user_id) VALUES ?',
+      [memberValues]
+    );
+
+    // 4. Upgrade creator to admin if student
     if (user_type === 'student') {
       await db.promise().query(
         'UPDATE Users SET user_type = "admin" WHERE id = ?',
-        [user_id]
+        [admin_id]
       );
     }
 
     await db.promise().commit();
 
     res.status(201).json({
-      message: 'RSO created successfully',
-      rso_id: rsoResult.insertId,
-      ...(user_type === 'student' && { new_user_type: 'admin' }) // Only show if upgraded
+      message: 'RSO created successfully pending approval',
+      rso_id: rso_id,
+      member_count: allMemberIds.length,
+      ...(user_type === 'student' && { new_user_type: 'admin' })
     });
 
   } catch (err) {
@@ -840,6 +1133,214 @@ app.delete('/api/rsos/:id', authenticateUser, (req, res) => {
     }
   );
 });
+
+// Get RSOs where user is the creator
+app.get('/api/admin/rsos', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userType = req.user.user_type;
+
+    // Check user is an admin
+    if (userType !== 'admin' && userType !== 'super_admin') {
+      return res.status(403).json({ message: 'Only admin users can access this endpoint' });
+    }
+
+    const query = `
+      SELECT 
+        id AS rso_id,
+        name AS rso_name,
+        status,
+        university_id
+      FROM RSOs 
+      WHERE admin_id = ?
+      ORDER BY name ASC
+    `;
+
+    db.query(query, [userId], (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to fetch RSOs' });
+      }
+
+      const formattedRSOs = results.map(rso => ({
+        id: rso.rso_id,
+        name: rso.rso_name,
+        status: rso.status,
+        university_id: rso.university_id
+      }));
+
+      res.status(200).json(formattedRSOs);
+    });
+
+  } catch (error) {
+    console.error('Get admin RSOs error:', error);
+    res.status(500).json({ message: 'Server error while fetching admin RSOs' });
+  }
+});
+
+// Get all RSOs the user is part of
+app.get('/api/user/rsos', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const query = `
+      SELECT 
+        r.id AS rso_id,
+        r.name AS rso_name,
+        r.status,
+        r.admin_id,
+        u.username AS admin_username,
+        univ.name AS university_name
+      FROM RSOs r
+      JOIN RSO_Members rm ON r.id = rm.rso_id
+      JOIN Users u ON r.admin_id = u.id
+      LEFT JOIN Universities univ ON r.university_id = univ.id
+      WHERE rm.user_id = ?
+      ORDER BY r.status DESC, r.name ASC
+    `;
+
+    db.query(query, [userId], (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to fetch RSO memberships' });
+      }
+
+      const formattedRSOs = results.map(rso => ({
+        id: rso.rso_id,
+        name: rso.rso_name,
+        status: rso.status,
+        admin: {
+          id: rso.admin_id,
+          username: rso.admin_username
+        },
+        university: rso.university_id ? {
+          name: rso.university_name
+        } : null
+      }));
+
+      res.status(200).json(formattedRSOs);
+    });
+
+  } catch (error) {
+    console.error('Get user RSOs error:', error);
+    res.status(500).json({ message: 'Server error while fetching user RSOs' });
+  }
+});
+
+// Get all RSOs the user is not part of
+app.get('/api/user/rsos/notmember', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const universityId = req.user.university_id;
+
+    const query = `
+      SELECT 
+        r.id AS rso_id,
+        r.name AS rso_name,
+        r.status,
+        r.admin_id,
+        u.username AS admin_username,
+        univ.name AS university_name
+      FROM RSOs r
+      JOIN Users u ON r.admin_id = u.id
+      LEFT JOIN Universities univ ON r.university_id = univ.id
+      WHERE 
+        r.university_id = ? AND
+        r.id NOT IN (
+          SELECT rso_id FROM RSO_Members WHERE user_id = ?
+        )
+      ORDER BY r.status DESC, r.name ASC
+    `;
+
+    db.query(query, [universityId, userId], (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to fetch nonmember RSOs' });
+      }
+
+      const formattedRSOs = results.map(rso => ({
+        id: rso.rso_id,
+        name: rso.rso_name,
+        status: rso.status,
+        admin: {
+          id: rso.admin_id,
+          username: rso.admin_username
+        },
+        university: rso.university_id ? {
+          name: rso.university_name
+        } : null
+      }));
+
+      res.status(200).json(formattedRSOs);
+    });
+
+  } catch (error) {
+    console.error('Get nonmember RSOs error:', error);
+    res.status(500).json({ message: 'Server error while fetching nonmember RSOs' });
+  }
+});
+
+// Add user to RSO members
+app.post('/api/rsos/:rsoId/join', authenticateUser, async (req, res) => {
+  try {
+    const rsoId = req.params.rsoId;
+    const userId = req.user.id;
+    const universityId = req.user.university_id;
+
+    // Check RSO exists and is from the same university
+    const [rsoCheck] = await db.promise().query(
+      `SELECT id, university_id, status FROM RSOs 
+       WHERE id = ? AND university_id = ?`,
+      [rsoId, universityId]
+    );
+
+    if (rsoCheck.length === 0) {
+      return res.status(404).json({ 
+        message: 'RSO not found or not from your university' 
+      });
+    }
+
+    if (rsoCheck[0].status !== 'active') {
+      return res.status(400).json({ 
+        message: 'Cannot join an inactive RSO' 
+      });
+    }
+
+    // 2. Check if user is already a member
+    const [existingMembership] = await db.promise().query(
+      `SELECT id FROM RSO_Members 
+       WHERE rso_id = ? AND user_id = ?`,
+      [rsoId, userId]
+    );
+
+    if (existingMembership.length > 0) {
+      return res.status(400).json({ 
+        message: 'You are already a member of this RSO' 
+      });
+    }
+
+    // 3. Add user to RSO
+    await db.promise().query(
+      `INSERT INTO RSO_Members (rso_id, user_id, joined_at) 
+       VALUES (?, ?, NOW())`,
+      [rsoId, userId]
+    );
+
+    res.status(200).json({ 
+      message: 'Successfully joined RSO',
+      rso_id: rsoId,
+      user_id: userId
+    });
+
+  } catch (error) {
+    console.error('Join RSO error:', error);
+    res.status(500).json({ message: 'Server error while joining RSO' });
+  }
+});
+
+/* -------------------------------------------------------------------------- */
+/*                                rating                                      */
+/* -------------------------------------------------------------------------- */
 
 // Add rating for event 
 app.post('/api/events/:id/ratings', async (req, res) => {
@@ -1009,6 +1510,3 @@ app.delete('/api/events/:id/ratings', (req, res) => {
 app.listen(8080, '0.0.0.0', () => {
     console.log("Server is running on port 8080");
   });
-
-
-
