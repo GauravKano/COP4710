@@ -961,7 +961,7 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
   const admin_id = req.user.id;
   const user_type = req.user.user_type;
 
-  // Validate inputs
+  // Check inputs
   if (!name || !university_id || !member_emails || !Array.isArray(member_emails)) {
     return res.status(400).json({ message: 'Name, university_id, and member_emails array are required' });
   }
@@ -971,19 +971,18 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
   }
 
   try {
-    // 1. Verify database connection
-    const [dbInfo] = await db.promise().query('SELECT DATABASE() as db');
-    console.log('Connected to database:', dbInfo[0].db);
+    // First check for triggers on the table
+    const [triggers] = await db.promise().query(
+      `SHOW TRIGGERS FROM College_Event_Manager LIKE 'RSO_Members'`
+    );
 
-    // 2. Verify table access
-    const [tables] = await db.promise().query('SHOW TABLES LIKE "RSO_Members"');
-    if (tables.length === 0) {
-      throw new Error('RSO_Members table not found in current database');
+    if (triggers.length > 0) {
+      console.warn('Warning: The following triggers exist on RSO_Members:', triggers);
     }
 
     await db.promise().beginTransaction();
 
-    // 3. Verify members
+    // Check members
     const [members] = await db.promise().query(
       `SELECT id, email, university_id FROM Users WHERE email IN (?)`,
       [member_emails]
@@ -997,27 +996,29 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
       });
     }
 
-    // 4. Create RSO with explicit database prefix
+    // 3. Create RSO
     const [rsoResult] = await db.promise().query(
-      `INSERT INTO College_Event_Manager.RSOs (name, status, university_id, admin_id)
+      `INSERT INTO RSOs (name, status, university_id, admin_id)
        VALUES (?, 'active', ?, ?)`,
       [name, university_id, admin_id]
     );
     const rso_id = rsoResult.insertId;
 
-    // 5. Add members with explicit database prefix
+    // 4. Add members with trigger workaround
     const allMembers = [admin_id, ...members.map(m => m.id)];
-    const memberValues = allMembers.map(student_id => [rso_id, student_id]);
+    
+    // Insert members one at a time as a workaround
+    for (const student_id of allMembers) {
+      await db.promise().query(
+        `INSERT INTO RSO_Members (rso_id, student_id) VALUES (?, ?)`,
+        [rso_id, student_id]
+      );
+    }
 
-    await db.promise().query(
-      `INSERT INTO College_Event_Manager.RSO_Members (rso_id, student_id) VALUES ?`,
-      [memberValues]
-    );
-
-    // 6. Upgrade creator if needed
+    // 5. Upgrade creator if needed
     if (user_type === 'student') {
       await db.promise().query(
-        `UPDATE College_Event_Manager.Users SET user_type = 'admin' WHERE id = ?`,
+        `UPDATE Users SET user_type = 'admin' WHERE id = ?`,
         [admin_id]
       );
     }
@@ -1040,11 +1041,12 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
       stack: err.stack
     });
 
-    // Special handling for permission errors
-    if (err.code === 'ER_DBACCESS_DENIED_ERROR' || err.code === 'ER_TABLEACCESS_DENIED_ERROR') {
-      return res.status(403).json({
-        message: 'Database permission denied',
-        solution: 'Check MySQL user permissions for INSERT operations'
+    // Special handling for trigger related errors
+    if (err.code === 'ER_BAD_FIELD_ERROR' && err.sqlMessage.includes('WHERE')) {
+      return res.status(500).json({
+        message: 'Database trigger conflict',
+        solution: 'Please check and modify any triggers on the RSO_Members table',
+        detail: 'A trigger is interfering with RSO member insertion'
       });
     }
 
