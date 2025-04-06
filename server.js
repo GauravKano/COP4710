@@ -754,70 +754,42 @@ app.get('/api/user/events', authenticateUser, async (req, res) => {
 // Get all pending public events
 app.get('/api/events/pendingpublic', authenticateUser, async (req, res) => {
   try {
-    console.log('User making request:', req.user);
-    
     // Check admin status
     if (!['admin', 'super_admin'].includes(req.user.user_type)) {
-      console.log('Access denied for user type:', req.user.user_type);
-      return res.status(403).json({ message: 'Only admin users can view pending events' });
+      return res.status(403).json({ message: 'Admin access required' });
     }
 
-    console.log('Querying database for pending public events...');
-    
     const query = `
       SELECT 
         id,
         name,
-        date_time AS time,
-        created_at,
-        created_by
+        UNIX_TIMESTAMP(date_time) AS timestamp,
+        created_by,
+        description
       FROM Events
       WHERE 
-        event_type = 'public' AND
-        status = 'pending'
+        event_type = 'public' COLLATE utf8mb4_general_ci AND
+        status = 'pending' COLLATE utf8mb4_general_ci
       ORDER BY date_time ASC
     `;
 
-    db.query(query, (err, results) => {
-      if (err) {
-        console.error('Database error:', {
-          error: err,
-          sql: err.sql,
-          stack: err.stack
-        });
-        return res.status(500).json({ 
-          message: 'Database error',
-          error: err.message 
-        });
-      }
+    const [results] = await db.promise().query(query);
 
-      console.log(`Found ${results.length} pending public events`);
-      console.log('Results:', results);
+    const events = results.map(event => ({
+      id: event.id,
+      name: event.name,
+      time: new Date(event.timestamp * 1000).toISOString(),
+      creator: event.created_by,
+      description: event.description || ''
+    }));
 
-      if (!results || results.length === 0) {
-        console.log('No pending public events found');
-        return res.status(200).json([]);
-      }
-
-      const formattedEvents = results.map(event => ({
-        id: event.id,
-        name: event.name,
-        time: event.time,
-        created_at: event.created_at,
-        created_by: event.created_by
-      }));
-
-      res.status(200).json(formattedEvents);
-    });
+    return res.status(200).json(events);
 
   } catch (error) {
-    console.error('Endpoint error:', {
-      message: error.message,
-      stack: error.stack
-    });
-    res.status(500).json({ 
-      message: 'Server error',
-      error: error.message 
+    console.error('Endpoint failed:', error);
+    return res.status(500).json({ 
+      message: 'Failed to fetch events',
+      error: error.message
     });
   }
 });
