@@ -8,6 +8,15 @@ type University = {
   id: number;
 };
 
+type user = {
+  id?: number;
+  username?: string;
+  email?: string;
+  phone?: string;
+  universityId?: number;
+  userType?: "super_admin" | "admin" | "student";
+};
+
 const Register = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("");
@@ -19,17 +28,72 @@ const Register = () => {
     useState<University | null>(null);
   const [universityOptions, setUniversityOptions] = useState<University[]>([]);
 
-  useEffect(() => {
-    // Get all universities API here
+  const getCookieData = () => {
+    const cookies = document.cookie.split("; ");
+    const cookieObject: user = {};
 
-    setUniversityOptions([
-      { name: "University of Florida", id: 1 },
-      { name: "University of Central Florida", id: 2 },
-      { name: "Florida State University", id: 3 },
-    ]);
+    cookies.forEach((cookie) => {
+      const [key, value] = cookie.split("=");
+      if (key.trim() === "userId") {
+        cookieObject.id = parseInt(value.trim());
+      }
+      if (key.trim() === "userEmail") {
+        cookieObject.email = value.trim();
+      }
+      if (key.trim() === "username") {
+        cookieObject.username = value.trim();
+      }
+      if (key.trim() === "userType") {
+        cookieObject.userType = value.trim() as
+          | "super_admin"
+          | "admin"
+          | "student";
+      }
+      if (key.trim() === "universityId") {
+        cookieObject.universityId = parseInt(value.trim());
+      }
+    });
+
+    if (cookieObject && cookieObject.id && cookieObject.userType) {
+      navigate("/dashboard");
+    }
+  };
+
+  const getUniversities = async () => {
+    try {
+      const response = await fetch(
+        "http://35.175.224.17:8080/api/universities",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to fetch universities");
+      }
+
+      const data = await response.json();
+      setUniversityOptions(data);
+    } catch (error) {
+      console.error("Error fetching universities:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to load universities"
+      );
+    }
+  };
+
+  useEffect(() => {
+    getCookieData();
+
+    // Get all universities API here
+    getUniversities();
   }, []);
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     if (!selectedUniversity) {
@@ -48,8 +112,31 @@ const Register = () => {
       setError("Passwords do not match");
     } else {
       //Register API here
+      try {
+        const response = await fetch("http://35.175.224.17:8080/api/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: userName.trim(),
+            email: email.trim(),
+            password: password.trim(),
+            user_type: "student",
+            university_id: selectedUniversity.id,
+          }),
+        });
 
-      navigate("/login");
+        if (!response.ok) {
+          const errorMessage = await response.json();
+          throw new Error(errorMessage.message || "Failed to register user");
+        }
+
+        navigate("/login");
+      } catch (error) {
+        console.error("Error during registration:", error);
+        setError(error instanceof Error ? error.message : "Failed to register");
+      }
     }
   };
 

@@ -8,16 +8,41 @@ const CreateUniversity: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [universityName, setUniversityName] = useState<string>("");
 
-  const handleCreateUniversity = () => {
+  const handleCreateUniversity = async () => {
     if (!universityName.trim()) {
       setError("University name cannot be empty.");
       return;
     }
 
     // const universityId = Add University API here
+    try {
+      const response = await fetch(
+        "http://35.175.224.17:8080/api/universities",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name: universityName.trim() }),
+        }
+      );
 
-    insertUniversity(0, universityName.trim());
-    closeModal();
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(
+          errorMessage.message || "Failed to create universities"
+        );
+      }
+
+      const data = await response.json();
+      insertUniversity(data.university.id, universityName.trim());
+      closeModal();
+    } catch (error) {
+      console.error("Error creating universities:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to create universities"
+      );
+    }
   };
 
   return (

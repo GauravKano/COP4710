@@ -1,7 +1,16 @@
 import { Link, useNavigate } from "react-router";
 import ErrorDialog from "../components/ErrorDialog";
 import Navbar from "../components/Navbar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+type user = {
+  id?: number;
+  username?: string;
+  email?: string;
+  phone?: string;
+  universityId?: number;
+  userType?: "super_admin" | "admin" | "student";
+};
 
 const Login = () => {
   const navigate = useNavigate();
@@ -9,7 +18,42 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = () => {
+  const getCookieData = () => {
+    const cookies = document.cookie.split("; ");
+    const cookieObject: user = {};
+
+    cookies.forEach((cookie) => {
+      const [key, value] = cookie.split("=");
+      if (key.trim() === "userId") {
+        cookieObject.id = parseInt(value.trim());
+      }
+      if (key.trim() === "userEmail") {
+        cookieObject.email = value.trim();
+      }
+      if (key.trim() === "username") {
+        cookieObject.username = value.trim();
+      }
+      if (key.trim() === "userType") {
+        cookieObject.userType = value.trim() as
+          | "super_admin"
+          | "admin"
+          | "student";
+      }
+      if (key.trim() === "universityId") {
+        cookieObject.universityId = parseInt(value.trim());
+      }
+    });
+
+    if (cookieObject && cookieObject.id && cookieObject.userType) {
+      navigate("/dashboard");
+    }
+  };
+
+  useEffect(() => {
+    getCookieData();
+  }, []);
+
+  const handleLogin = async () => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     if (!email.trim()) {
@@ -20,14 +64,38 @@ const Login = () => {
       setError("Please enter a password");
     } else {
       //Login API here
+      try {
+        const response = await fetch("http://35.175.224.17:8080/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            password: password.trim(),
+          }),
+        });
 
-      document.cookie = `userId=1; path=/`;
-      document.cookie = `userEmail=${email}; path=/`;
-      document.cookie = `username=John Doe; path=/`;
-      document.cookie = `userType=super_admin; path=/`;
-      document.cookie = `universityId=1; path=/`;
+        if (!response.ok) {
+          const errorMessage = await response.json();
+          throw new Error(errorMessage.message || "Failed to login user");
+        }
 
-      navigate("/dashboard");
+        const data = await response.json();
+        const userData = data.user;
+
+        document.cookie = `userId=${userData.id}; path=/`;
+        document.cookie = `userEmail=${userData.email}; path=/`;
+        document.cookie = `username=${userData.username}; path=/`;
+        document.cookie = `userType=${userData.user_type}; path=/`;
+        document.cookie = `universityId=${userData.university_id}; path=/`;
+
+        navigate("/dashboard");
+      } catch (error) {
+        console.error("Error during login:", error);
+        setError(error instanceof Error ? error.message : "Failed to login");
+        return;
+      }
     }
   };
 

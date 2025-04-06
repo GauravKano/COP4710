@@ -6,19 +6,45 @@ const AddComment: React.FC<{
   updateComments: (commentId: number, newContent: string) => void;
   userId: number;
   eventId: number;
-}> = ({ closeModal, updateComments }) => {
+}> = ({ closeModal, updateComments, userId, eventId }) => {
   const [commentContent, setCommentContent] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (!commentContent.trim()) {
       setError("Comment content cannot be empty.");
       return;
     }
 
     //const commentId = Add Comment API here
-    updateComments(0, commentContent.trim());
-    closeModal();
+    try {
+      const response = await fetch("http://35.175.224.17:8080/api/comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: commentContent.trim(),
+          user_id: userId,
+          event_id: eventId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to add comment");
+      }
+
+      const data = await response.json();
+
+      updateComments(data.comment_id, commentContent.trim());
+      closeModal();
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to add comment"
+      );
+      console.error("Error adding comment:", error);
+    }
   };
 
   return (

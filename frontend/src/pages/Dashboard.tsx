@@ -26,13 +26,15 @@ type EventDetails = {
   comments: Comment[];
   university_name: string | null;
   rso_name: string | null;
+  [key: string]: string | number | null | boolean | Comment[];
 };
 
 type Comment = {
   content: string;
   id: number;
   name: string;
-  userId: number;
+  user_id: number;
+  [key: string]: string | number | null;
 };
 
 type user = {
@@ -44,7 +46,7 @@ type user = {
   userType?: "super_admin" | "admin" | "student";
 };
 
-const Dashbaord = () => {
+const Dashboard = () => {
   const navigate = useNavigate();
   const [selectedEvent, setSelectedEvent] = useState<EventDetails | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
@@ -84,7 +86,7 @@ const Dashbaord = () => {
     }
   };
 
-  const getEventsForUser = () => {
+  const getEventsForUser = async () => {
     // Get events for user API here
 
     setEvents([
@@ -115,100 +117,74 @@ const Dashbaord = () => {
     getEventsForUser();
   }, []);
 
-  const handleEventClick = (id: number) => {
-    console.log("Event clicked:", id);
+  const handleEventClick = async (id: number) => {
+    let eventComments: Comment[] = [];
     // Get Event Comments API here
-    const eventComments: Comment[] = [
-      {
-        content: "This event was amazing! I had a great time.",
-        id: 1,
-        name: "Alice",
-        userId: 2,
-      },
-      {
-        content:
-          "The speakers were really informative. Highly recommend attending.",
-        id: 2,
-        name: "Bob",
-        userId: 11,
-      },
-      {
-        content:
-          "I wish the event lasted longer. It was fun! It was fun! It was fun!",
-        id: 3,
-        name: "Charlie",
-        userId: 1,
-      },
-      {
-        content: "Very well organized. Looking forward to the next one!",
-        id: 4,
-        name: "David",
-        userId: 1,
-      },
-      {
-        content: "Great event, but the food could have been better.",
-        id: 5,
-        name: "Eve",
-        userId: 12,
-      },
-      {
-        content:
-          "Fantastic networking opportunities. Met a lot of interesting people.",
-        id: 6,
-        name: "Frank",
-        userId: 13,
-      },
-      {
-        content: "I think the event could use more interactive sessions.",
-        id: 7,
-        name: "Grace",
-        userId: 7,
-      },
-      {
-        content:
-          "I enjoyed the event but was disappointed by the timing of the breaks.",
-        id: 8,
-        name: "Henry",
-        userId: 9,
-      },
-      {
-        content:
-          "Amazing content and speakers. A must-attend for anyone interested in tech.",
-        id: 9,
-        name: "Ivy",
-        userId: 10,
-      },
-      {
-        content:
-          "The event was good but lacked sufficient seating for all attendees.",
-        id: 10,
-        name: "Jack",
-        userId: 1,
-      },
-    ];
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/comments/${id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to get event details");
+      }
+
+      const data = await response.json();
+      eventComments = data.map((comment: Comment) => {
+        return { ...comment, name: comment.name || "Anonymous" };
+      });
+    } catch (error) {
+      console.error("Error fetching event comments: ", error);
+      return;
+    }
 
     // Get avg event rating API here
     const eventRating = 3;
 
     // Get event details API here
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/events/${id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    setSelectedEvent({
-      id: 1,
-      name: "Private Seminar",
-      description:
-        "A conference bringing together tech enthusiasts and industry leaders.",
-      date_time: "2025-06-15 10:00:00",
-      location_name: "Orlando Convention Center",
-      latitude: 28.4255,
-      longitude: -81.309,
-      contactPhone: "+1 (555) 123-4567",
-      contactEmail: "info@techconference.com",
-      event_type: "private",
-      ratings: eventRating,
-      comments: eventComments,
-      rso_name: "Tech Innovators Club",
-      university_name: "University of Central Florida",
-    });
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to get event details");
+      }
+
+      const { date_time, ...data } = await response.json();
+      const date = new Date(date_time);
+      const formattedDate = date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+      setSelectedEvent({
+        ...data,
+        date_time: formattedDate,
+        ratings: eventRating || 0,
+        comments: eventComments,
+      });
+    } catch (error) {
+      console.error("Error fetching event details: ", error);
+      return;
+    }
   };
 
   return (
@@ -269,11 +245,18 @@ const Dashbaord = () => {
           closeModal={() => setCreateEventModal(false)}
           userId={userData?.id || 0}
           universityId={userData?.universityId || 0}
-          getEvents={getEventsForUser}
+          updateEvents={(
+            id: number,
+            name: string,
+            date_time: string,
+            event_type: "public" | "private" | "rso"
+          ) => {
+            setEvents((prev) => [{ id, name, date_time, event_type }, ...prev]);
+          }}
         />
       )}
     </div>
   );
 };
 
-export default Dashbaord;
+export default Dashboard;

@@ -56,19 +56,31 @@ const SuperAdminDashboard = () => {
       cookieObject.userType !== "super_admin"
     ) {
       navigate("/login");
-    } else {
-      console.log(cookieObject);
     }
   };
 
-  const getUniversities = () => {
-    // Get universities API here
+  const getUniversities = async () => {
+    try {
+      const response = await fetch(
+        "http://35.175.224.17:8080/api/universities",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    setUniversityList([
-      { id: 1, name: "University A" },
-      { id: 2, name: "University B" },
-      { id: 3, name: "University C" },
-    ]);
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to fetch universities");
+      }
+
+      const data = await response.json();
+      setUniversityList(data);
+    } catch (error) {
+      console.error("Error fetching universities:", error);
+    }
   };
 
   useEffect(() => {

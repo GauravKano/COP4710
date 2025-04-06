@@ -10,8 +10,13 @@ const CreateEvent: React.FC<{
   closeModal: () => void;
   userId: number;
   universityId: number;
-  getEvents: () => void;
-}> = ({ closeModal, userId, universityId, getEvents }) => {
+  updateEvents: (
+    id: number,
+    name: string,
+    date_time: string,
+    event_type: "public" | "private" | "rso"
+  ) => void;
+}> = ({ closeModal, userId, universityId, updateEvents }) => {
   const [eventName, setEventName] = useState<string>("");
   const [eventType, setEventType] = useState<
     "public" | "private" | "rso" | null
@@ -54,7 +59,7 @@ const CreateEvent: React.FC<{
     return returnPhone;
   };
 
-  const handleCreateEvent = () => {
+  const handleCreateEvent = async () => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     if (!eventName.trim()) {
@@ -75,23 +80,56 @@ const CreateEvent: React.FC<{
       setError("Location name cannot be empty.");
     } else {
       // const eventId = Create Event API here
+      try {
+        const response = await fetch("http://35.175.224.17:8080/api/events", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: eventName.trim(),
+            description: description.trim() || null,
+            date_time: dateTime,
+            location_name: locationName.trim(),
+            latitude: 1,
+            longitude: 1,
+            contact_phone: contactPhone || null,
+            contact_email: contactEmail.trim() || null,
+            event_type: eventType,
+            rso_id: eventType === "rso" ? rso?.id : null,
+            university_id: eventType === "private" ? universityId : null,
+            created_by: userId,
+          }),
+        });
 
-      getEvents();
+        if (!response.ok) {
+          const errorMessage = await response.json();
+          throw new Error(errorMessage.message || "Failed to create event");
+        }
 
-      console.log({
-        eventName: eventName.trim(),
-        eventType,
-        rsoId: rso ? rso.id : null,
-        dateTime,
-        description: description.trim() || null,
-        contactPhone: contactPhone || null,
-        contactEmail: contactEmail.trim() || null,
-        locationName: locationName.trim(),
-        userId,
-        universityId,
-      });
+        const data = await response.json();
+        const date = new Date(data.event.date_time);
 
-      closeModal();
+        updateEvents(
+          data.event.id,
+          data.event.name,
+          date.toLocaleString("en-US", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          }),
+          data.event.event_type as "public" | "private" | "rso"
+        );
+        closeModal();
+      } catch (error) {
+        console.error("Error during create event:", error);
+        setError(
+          error instanceof Error ? error.message : "Failed to create event"
+        );
+      }
     }
   };
 

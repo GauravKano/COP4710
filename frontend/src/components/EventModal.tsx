@@ -9,7 +9,8 @@ type Comment = {
   content: string;
   id: number;
   name: string;
-  userId: number;
+  user_id: number;
+  [key: string]: string | number | null;
 };
 
 type Event = {
@@ -27,6 +28,7 @@ type Event = {
   comments: Comment[];
   university_name: string | null;
   rso_name: string | null;
+  [key: string]: string | number | null | boolean | Comment[];
 };
 
 type Rating = {
@@ -49,7 +51,6 @@ const EventModal: React.FC<{
 
   useEffect(() => {
     //Get users Rating API goes here
-
     setMyRating(null);
   }, []);
 
@@ -172,13 +173,12 @@ const EventModal: React.FC<{
                 <div
                   key={index}
                   className="border rounded-lg py-2.5 px-4 mx-2 flex items-center gap-2"
-                  onClick={() => console.log(comment)}
                 >
                   <div className="grow mr-2">
                     <p className="font-semibold">{comment.name}</p>
                     <p>{comment.content}</p>
                   </div>
-                  {userId === comment.userId && (
+                  {userId === comment.user_id && (
                     <>
                       <button
                         className="p-1.5 rounded-md hover:bg-gray-100 cursor-pointer"
@@ -276,10 +276,8 @@ const EventModal: React.FC<{
                 id: commentId,
                 content: newContent,
                 name: username,
-                userId: userId,
+                user_id: userId,
               };
-
-              console.log("New Comment Added:", newComment);
 
               return {
                 ...prev,

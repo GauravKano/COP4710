@@ -1,8 +1,11 @@
+import { useState } from "react";
+import ErrorDialog from "./ErrorDialog";
+
 type Comment = {
   content: string;
   id: number;
   name: string;
-  userId: number;
+  user_id: number;
 };
 
 const DeleteComment: React.FC<{
@@ -10,11 +13,31 @@ const DeleteComment: React.FC<{
   closeModal: () => void;
   updateComments: (commentId: number) => void;
 }> = ({ comment, closeModal, updateComments }) => {
-  const handleDelete = () => {
-    //Delete Comment API call here
+  const [error, setError] = useState<string | null>(null);
 
-    updateComments(comment.id);
-    closeModal();
+  const handleDelete = async () => {
+    //Delete Comment API call here
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/comments/${comment.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to delete comment");
+      }
+
+      updateComments(comment.id);
+      closeModal();
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to delete comment"
+      );
+      console.error("Error deleting comment:", error);
+    }
   };
 
   return (
@@ -36,6 +59,11 @@ const DeleteComment: React.FC<{
             <p className="text-sm">{comment.content}</p>
           </div>
         </div>
+
+        {error && (
+          <ErrorDialog errorMessage={error} setErrorMessage={setError} />
+        )}
+
         <div className="flex justify-end items-center gap-4 mt-2">
           <button
             className="bg-gray-600 text-white text-sm px-3.5 py-2 rounded-lg cursor-pointer hover:bg-gray-700"
