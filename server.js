@@ -966,21 +966,24 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
     return res.status(400).json({ message: 'Name, university_id, and member_emails array are required' });
   }
 
-  // Need at least 4 other members
   if (member_emails.length < 4) {
     return res.status(400).json({ message: 'Need at least 4 other members' });
   }
 
   try {
+    // Debug: Verify database connection
+    const [dbInfo] = await db.promise().query('SELECT DATABASE() as db');
+    console.log('Connected to database:', dbInfo[0].db);
+
     await db.promise().beginTransaction();
 
-    // Check all members exist and belong to same university
+    // check members exist
     const [members] = await db.promise().query(
       `SELECT id, email, university_id FROM Users WHERE email IN (?)`,
       [member_emails]
     );
 
-    // Check if all emails were found
+    // Check all emails were found
     if (members.length !== member_emails.length) {
       const foundEmails = new Set(members.map(m => m.email));
       const missingEmails = member_emails.filter(email => !foundEmails.has(email));
@@ -994,7 +997,7 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
     const wrongUniversity = members.some(m => m.university_id !== university_id);
     if (wrongUniversity) {
       return res.status(400).json({
-        message: 'All members must belong to the same university as the RSO'
+        message: 'All members must belong to the same university'
       });
     }
 
@@ -1006,20 +1009,29 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
     );
     const rso_id = rsoResult.insertId;
 
-    // 3. Add all members
+    // 3. Debug Check table structure
+    try {
+      const [tableInfo] = await db.promise().query('SHOW CREATE TABLE RSO_Members');
+      console.log('RSO_Members table structure:', tableInfo[0]['Create Table']);
+    } catch (err) {
+      console.error('Error checking table structure:', err);
+    }
+
+    // 4. Add members with error handling
     const allMembers = [admin_id, ...members.map(m => m.id)];
     const memberValues = allMembers.map(student_id => [rso_id, student_id]);
 
+    // Using backticks for safety
     await db.promise().query(
-      `INSERT INTO RSO_Members (rso_id, student_id) VALUES ?`,
+      'INSERT INTO `RSO_Members` (`rso_id`, `student_id`) VALUES ?',
       [memberValues]
     );
 
-    // 4. Upgrade creator to admin if they were a student
+    // 5. Upgrade creator to admin if student
     if (user_type === 'student') {
       await db.promise().query(
-        `UPDATE Users SET user_type = 'admin' WHERE id = ?`,
-        [admin_id]
+        'UPDATE Users SET user_type = ? WHERE id = ?',
+        ['admin', admin_id]
       );
     }
 
@@ -1034,11 +1046,16 @@ app.post('/api/rsos', authenticateUser, async (req, res) => {
 
   } catch (err) {
     await db.promise().rollback();
-    console.error('Database error:', err);
+    console.error('Full error details:', {
+      message: err.message,
+      code: err.code,
+      sql: err.sql,
+      stack: err.stack
+    });
     return res.status(500).json({
       message: 'Failed to create RSO',
       error: err.message,
-      sql: err.sql
+      code: err.code
     });
   }
 });
