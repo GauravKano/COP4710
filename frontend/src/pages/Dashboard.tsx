@@ -37,6 +37,16 @@ type Comment = {
   [key: string]: string | number | null;
 };
 
+type APIComment = {
+  id: number;
+  content: string;
+  user: {
+    id: number;
+    username: string;
+  };
+  [key: string]: unknown;
+};
+
 type user = {
   id?: number;
   username?: string;
@@ -137,8 +147,13 @@ const Dashboard = () => {
       }
 
       const data = await response.json();
-      eventComments = data.map((comment: Comment) => {
-        return { ...comment, name: comment.name || "Anonymous" };
+      eventComments = data.map((comment: APIComment) => {
+        return {
+          id: comment.id,
+          content: comment.content,
+          name: comment.user.username,
+          user_id: comment.user.id,
+        };
       });
     } catch (error) {
       console.error("Error fetching event comments: ", error);
