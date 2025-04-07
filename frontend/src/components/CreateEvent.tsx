@@ -168,14 +168,14 @@ const CreateEvent: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 bg-black/75 flex justify-center items-center overflow-y-hidden z-20 h-dvh p-4"
+      className="fixed inset-0 bg-black/75 flex justify-center items-center overflow-y-auto z-20 h-dvh p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           closeModal();
         }
       }}
     >
-      <div className="bg-white pt-10 pb-12 px-8 rounded-lg max-w-xl w-full overflow-y-auto max-h-full flex flex-col gap-8">
+      <div className="bg-white pt-10 pb-12 px-8 rounded-lg max-w-xl w-full my-auto flex flex-col gap-8">
         <h2 className="text-lg font-medium ml-4">Create Event</h2>
 
         {error && (

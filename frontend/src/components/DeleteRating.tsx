@@ -36,14 +36,14 @@ const DeleteRating: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 bg-black/75 flex justify-center items-center overflow-y-hidden z-50 h-dvh p-4"
+      className="fixed inset-0 bg-black/75 flex justify-center items-center overflow-y-auto z-50 h-dvh p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           closeModal();
         }
       }}
     >
-      <div className="bg-white py-10 px-12 rounded-lg max-w-lg w-full overflow-y-auto max-h-full flex flex-col gap-4">
+      <div className="bg-white py-10 px-12 rounded-lg max-w-lg w-full my-auto flex flex-col gap-4">
         <h3 className="text-lg font-medium">
           Are you sure you want to delete this rating?
         </h3>

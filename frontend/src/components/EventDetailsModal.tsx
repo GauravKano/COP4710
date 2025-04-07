@@ -21,14 +21,14 @@ const EventDetailsModal: React.FC<{
 }> = ({ event, closeModal }) => {
   return (
     <div
-      className="fixed inset-0 bg-black/75 flex justify-center items-center overflow-y-hidden z-20 h-dvh p-4"
+      className="fixed inset-0 bg-black/75 flex justify-center items-center overflow-y-auto z-20 h-dvh p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           closeModal();
         }
       }}
     >
-      <div className="bg-white pt-10 pb-12 px-12 rounded-lg max-w-2xl w-full overflow-y-auto max-h-full flex flex-col gap-1 relative">
+      <div className="bg-white pt-10 pb-12 px-12 rounded-lg max-w-2xl w-full my-auto flex flex-col gap-1 relative">
         <button
           className="absolute top-5 right-5 p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700 cursor-pointer rounded-md"
           onClick={closeModal}
