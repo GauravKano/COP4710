@@ -79,17 +79,13 @@ const EventModal: React.FC<{
       }
 
       const data = await response.json();
-      console.log(data);
+      setMyRating({
+        id: data.rating_id,
+        rating: index + 1,
+      });
     } catch (error) {
       console.error("Error adding rating:", error);
     }
-
-    // setMyRating({
-    //   id: 1,
-    //   rating: index + 1,
-    // });
-
-    console.log("Add Rating");
   };
 
   const handleUpdateRating = (index: number) => {
