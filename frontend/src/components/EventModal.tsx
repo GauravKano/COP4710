@@ -52,8 +52,12 @@ const EventModal: React.FC<{
 
   useEffect(() => {
     //Get users Rating API goes here
-    setMyRating(null);
+    handleGetMyRating();
   }, []);
+
+  const handleGetMyRating = () => {
+    setMyRating({ id: 3, rating: 1 });
+  };
 
   const handleAddRating = async (index: number) => {
     // const ratingId = Add Rating API here
@@ -88,14 +92,35 @@ const EventModal: React.FC<{
     }
   };
 
-  const handleUpdateRating = (index: number) => {
+  const handleUpdateRating = async (index: number) => {
     // Update Rating API here
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/events/${event.id}/ratings`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            rating: index + 1,
+            user_id: userId,
+          }),
+        }
+      );
 
-    setMyRating((prev) => {
-      return { id: prev!.id, rating: index + 1 };
-    });
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to update rating");
+      }
 
-    console.log("Update Rating");
+      setMyRating((prev) => {
+        return { id: prev!.id, rating: index + 1 };
+      });
+    } catch (error) {
+      console.error("Error updating rating:", error);
+    }
   };
 
   return (
@@ -234,12 +259,16 @@ const EventModal: React.FC<{
         <DeleteRating
           closeModal={() => setDeleteRating(false)}
           updateRating={() => setMyRating(null)}
+          token={token}
+          eventId={event.id}
+          userId={userId}
         />
       )}
 
       {deleteComment && (
         <DeleteComment
           comment={deleteComment}
+          token={token}
           closeModal={() => setDeleteComment(null)}
           updateComments={(commentId: number) => {
             setEvent((prev) => {
@@ -263,6 +292,7 @@ const EventModal: React.FC<{
       {editComment && (
         <EditComment
           comment={editComment}
+          token={token}
           closeModal={() => setEditComment(null)}
           updateComments={(commentId: number, newContent: string) => {
             setEvent((prev) => {
@@ -291,6 +321,7 @@ const EventModal: React.FC<{
           closeModal={() => setAddComment(false)}
           userId={userId}
           eventId={event.id}
+          token={token}
           updateComments={(commentId: number, newContent: string) => {
             setEvent((prev) => {
               if (!prev) {

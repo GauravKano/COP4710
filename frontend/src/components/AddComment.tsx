@@ -6,7 +6,8 @@ const AddComment: React.FC<{
   updateComments: (commentId: number, newContent: string) => void;
   userId: number;
   eventId: number;
-}> = ({ closeModal, updateComments, userId, eventId }) => {
+  token: string;
+}> = ({ closeModal, updateComments, userId, eventId, token }) => {
   const [commentContent, setCommentContent] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +23,7 @@ const AddComment: React.FC<{
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           content: commentContent.trim(),

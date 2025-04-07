@@ -10,9 +10,10 @@ type Comment = {
 
 const EditComment: React.FC<{
   comment: Comment;
+  token: string;
   closeModal: () => void;
   updateComments: (commentId: number, newContent: string) => void;
-}> = ({ comment, closeModal, updateComments }) => {
+}> = ({ comment, closeModal, updateComments, token }) => {
   const [commentContent, setCommentContent] = useState<string>(comment.content);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +30,7 @@ const EditComment: React.FC<{
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             content: commentContent.trim(),

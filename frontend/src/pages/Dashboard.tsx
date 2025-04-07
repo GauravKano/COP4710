@@ -323,7 +323,9 @@ const Dashboard = () => {
         <CreateEvent
           closeModal={() => setCreateEventModal(false)}
           userId={userData?.id || 0}
-          universityId={userData?.universityId || 0}
+          token={userData?.token || ""}
+          userType={userData?.userType || "student"}
+          universityId={userData?.universityId || null}
           updateEvents={(
             id: number,
             name: string,
