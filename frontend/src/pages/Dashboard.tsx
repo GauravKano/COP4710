@@ -41,8 +41,7 @@ type user = {
   id?: number;
   username?: string;
   email?: string;
-  phone?: string;
-  universityId?: number;
+  universityId?: number | null;
   userType?: "super_admin" | "admin" | "student";
   token?: string;
 };
@@ -76,7 +75,8 @@ const Dashboard = () => {
           | "student";
       }
       if (key.trim() === "universityId") {
-        cookieObject.universityId = parseInt(value.trim());
+        const parseId = parseInt(value.trim());
+        cookieObject.universityId = isNaN(parseId) ? null : parseId;
       }
       if (key.trim() === "token") {
         cookieObject.token = value.trim();
@@ -243,7 +243,8 @@ const Dashboard = () => {
         throw new Error(errorMessage.message || "Failed to get event details");
       }
 
-      const { date_time, ...data } = await response.json();
+      const { date_time, contact_email, contact_phone, ...data } =
+        await response.json();
       const date = new Date(date_time);
       const formattedDate = date.toLocaleString("en-US", {
         year: "numeric",
@@ -255,6 +256,8 @@ const Dashboard = () => {
       });
       setSelectedEvent({
         ...data,
+        contactEmail: contact_email || null,
+        contactPhone: contact_phone || null,
         date_time: formattedDate,
         ratings: eventRating,
         comments: eventComments,

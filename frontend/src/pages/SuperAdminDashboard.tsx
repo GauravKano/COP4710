@@ -8,9 +8,9 @@ type user = {
   id?: number;
   username?: string;
   email?: string;
-  phone?: string;
-  universityId?: number;
+  universityId?: number | null;
   userType?: "super_admin" | "admin" | "student";
+  token?: string;
 };
 
 type University = {
@@ -19,6 +19,7 @@ type University = {
 };
 
 const SuperAdminDashboard = () => {
+  const [userData, setUserData] = useState<user | null>(null);
   const [universityList, setUniversityList] = useState<University[]>([]);
   const [createUniversity, setCreateUniversity] = useState<boolean>(false);
   const [pendingEvents, setPendingEvents] = useState<boolean>(false);
@@ -46,20 +47,28 @@ const SuperAdminDashboard = () => {
           | "student";
       }
       if (key.trim() === "universityId") {
-        cookieObject.universityId = parseInt(value.trim());
+        const parseId = parseInt(value.trim());
+        cookieObject.universityId = isNaN(parseId) ? null : parseId;
+      }
+      if (key.trim() === "token") {
+        cookieObject.token = value.trim();
       }
     });
 
     if (
       !cookieObject ||
       !cookieObject.id ||
-      cookieObject.userType !== "super_admin"
+      cookieObject.userType !== "super_admin" ||
+      !cookieObject.token
     ) {
       navigate("/login");
+    } else {
+      setUserData(cookieObject);
+      getUniversities(cookieObject);
     }
   };
 
-  const getUniversities = async () => {
+  const getUniversities = async (cookieObject: user) => {
     try {
       const response = await fetch(
         "http://35.175.224.17:8080/api/universities",
@@ -67,6 +76,7 @@ const SuperAdminDashboard = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${cookieObject?.token || ""}`,
           },
         }
       );
@@ -85,8 +95,6 @@ const SuperAdminDashboard = () => {
 
   useEffect(() => {
     getCookieData();
-
-    getUniversities();
   }, []);
 
   return (
@@ -131,6 +139,7 @@ const SuperAdminDashboard = () => {
 
       {createUniversity && (
         <CreateUniversity
+          token={userData?.token || ""}
           closeModal={() => setCreateUniversity(false)}
           insertUniversity={(newId: number, newUniversityName: string) =>
             setUniversityList((prev) => [
@@ -142,7 +151,11 @@ const SuperAdminDashboard = () => {
       )}
 
       {pendingEvents && (
-        <PendingEvents closeModal={() => setPendingEvents(false)} />
+        <PendingEvents
+          token={userData?.token || ""}
+          userType={userData?.userType || "super_admin"}
+          closeModal={() => setPendingEvents(false)}
+        />
       )}
     </div>
   );

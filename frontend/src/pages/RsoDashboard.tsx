@@ -8,8 +8,7 @@ type user = {
   id?: number;
   username?: string;
   email?: string;
-  phone?: string;
-  universityId?: number;
+  universityId?: number | null;
   userType?: "super_admin" | "admin" | "student";
   token?: string;
 };
@@ -50,7 +49,8 @@ const RsoDashboard = () => {
           | "student";
       }
       if (key.trim() === "universityId") {
-        cookieObject.universityId = parseInt(value.trim());
+        const parseId = parseInt(value.trim());
+        cookieObject.universityId = isNaN(parseId) ? null : parseId;
       }
       if (key.trim() === "token") {
         cookieObject.token = value.trim();
@@ -167,7 +167,7 @@ const RsoDashboard = () => {
       {joinRSO && (
         <JoinRso
           userId={userData?.id || 0}
-          universityId={userData?.universityId || 0}
+          universityId={userData?.universityId || null}
           token={userData?.token || ""}
           closeModal={() => setJoinRSO(false)}
           updateRsos={(newRso: Rso) => {
@@ -180,10 +180,13 @@ const RsoDashboard = () => {
         <CreateRso
           closeModal={() => setCreateRSO(false)}
           userEmail={userData?.email || ""}
-          userUniversityId={userData?.universityId || 0}
           userId={userData?.id || 0}
           userType={userData?.userType || "student"}
-          getRSO={getRso}
+          universityId={userData?.universityId || null}
+          token={userData?.token || ""}
+          updateRso={(newRso: Rso) => {
+            setRsos((prev) => [newRso, ...prev]);
+          }}
         />
       )}
     </div>

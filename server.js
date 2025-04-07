@@ -897,8 +897,8 @@ app.put("/api/events/:eventId/status", authenticateUser, async (req, res) => {
     const { approved } = req.body;
     const userType = req.user.user_type;
 
-    // Only allow admins to approve/reject events
-    if (userType !== "admin" && userType !== "super_admin") {
+    // Only allow super admins to approve/reject events
+    if (userType !== "super_admin") {
       return res
         .status(403)
         .json({ message: "Only admin users can approve/reject events" });

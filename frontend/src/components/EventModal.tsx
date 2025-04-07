@@ -158,9 +158,7 @@ const EventModal: React.FC<{
         {event.event_type === "rso" && (
           <p className="text-sm">RSO Name: {event.rso_name}</p>
         )}
-        {event.ratings !== null && (
-          <p className="text-sm">Ratings: {event.ratings}</p>
-        )}
+        {event.ratings && <p className="text-sm">Ratings: {event.ratings}</p>}
         {event.contactPhone && (
           <p className="text-sm">Contact Phone Number: {event.contactPhone}</p>
         )}
