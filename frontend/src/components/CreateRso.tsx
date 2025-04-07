@@ -1,20 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
 import { FaTrash } from "react-icons/fa6";
 
 const CreateRso: React.FC<{
   closeModal: () => void;
   userEmail: string;
-  userUniversityId: number;
   userId: number;
   userType: "super_admin" | "admin" | "student";
-  getRSO: () => void;
-}> = ({ closeModal, userEmail, userType, getRSO }) => {
+  updateRso: (newRso: {
+    id: number;
+    name: string;
+    status: "active" | "inactive";
+    adminId: number;
+  }) => void;
+  universityId: number | null;
+  token: string;
+}> = ({
+  closeModal,
+  userEmail,
+  userType,
+  userId,
+  token,
+  universityId,
+  updateRso,
+}) => {
   const [error, setError] = useState<string | null>(null);
   const [rsoName, setRsoName] = useState<string>("");
   const [memberEmails, setMemberEmails] = useState<string[]>([""]);
 
-  const handleCreateRso = () => {
+  useEffect(() => {
+    if (universityId === null) {
+      closeModal();
+    }
+  }, []);
+
+  const handleCreateRso = async () => {
     if (!rsoName.trim()) {
       setError("RSO name cannot be empty.");
       return;
@@ -40,24 +60,44 @@ const CreateRso: React.FC<{
       }
     }
 
-    if (memberEmails.length < 4) {
-      setError("Need 4 members to create an RSO.");
+    // Create RSO API here
+    try {
+      const response = await fetch(`http://35.175.224.17:8080/api/rsos`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: rsoName.trim(),
+          university_id: universityId,
+          member_emails: memberEmails.map((email) => email.trim()),
+          user: {
+            id: userId,
+            user_type: userType,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to create rso");
+      }
+
+      const data = await response.json();
+      updateRso({
+        id: data.rso_id,
+        name: rsoName.trim(),
+        adminId: userId,
+        status: data.member_count >= 5 ? "active" : "inactive",
+      });
+
+      closeModal();
+    } catch (error) {
+      setError("Failed to create RSO");
+      console.error("Error creating RSO:", error);
       return;
     }
-
-    if (userType === "student") {
-      // Change role to Admin API here
-    }
-
-    // const rsoId = Create RSO API here
-
-    for (const email of memberEmails) {
-      console.log(email);
-      // Add RSO Member API here
-    }
-
-    getRSO();
-    closeModal();
   };
 
   return (

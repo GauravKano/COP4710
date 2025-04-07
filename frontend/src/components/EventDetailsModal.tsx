@@ -48,10 +48,10 @@ const EventDetailsModal: React.FC<{
             {event.event_type}
           </span>
         </p>
-        {event.event_type === "private" && (
+        {event.university_name && (
           <p className="text-sm">University Name: {event.university_name}</p>
         )}
-        {event.event_type === "rso" && (
+        {event.rso_name && (
           <p className="text-sm">RSO Name: {event.rso_name}</p>
         )}
         {event.contactPhone && (

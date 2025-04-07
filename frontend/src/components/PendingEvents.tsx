@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { FaCheck, FaXmark } from "react-icons/fa6";
 import EventDetailsModal from "./EventDetailsModal";
+import ErrorDialog from "./ErrorDialog";
 
 interface Event {
   id: number;
@@ -19,71 +20,150 @@ type EventDetails = {
   contactPhone: string | null;
   contactEmail: string | null;
   event_type: "public" | "private" | "rso";
+
   university_name: string | null;
   rso_name: string | null;
+  [key: string]: unknown;
 };
 
 const PendingEvents: React.FC<{
   closeModal: () => void;
-}> = ({ closeModal }) => {
+  token: string;
+  userType: "super_admin" | "admin" | "student";
+}> = ({ closeModal, token, userType }) => {
   const [pendingEvents, setPendingEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventDetails | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const getPendingEvents = () => {
+  const getPendingEvents = async () => {
     // Get Pending Public events API here
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/pendingpublic/events`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    setPendingEvents([
-      {
-        id: 1,
-        name: "Campus Meetup",
-        date_time: "2025-06-15 10:00:00",
-      },
-      {
-        id: 2,
-        name: "RSO Club Gathering",
-        date_time: "2025-06-15 10:00:00",
-      },
-      {
-        id: 3,
-        name: "Private Seminar",
-        date_time: "2025-06-15 10:00:00",
-      },
-    ]);
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to get pending events");
+      }
+
+      const data = await response.json();
+      setPendingEvents(
+        data.map((event: { id: number; name: string; time: string }) => {
+          const date = new Date(event.time);
+          const formattedDate = date.toLocaleString("en-US", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          });
+
+          return {
+            id: event.id,
+            name: event.name,
+            date_time: formattedDate,
+          };
+        })
+      );
+    } catch (error) {
+      setError("Failed to fetch pending events");
+      console.error("Failed to fetch pending events:", error);
+      return;
+    }
   };
 
   useEffect(() => {
     getPendingEvents();
   }, []);
 
-  const handleEventClick = (id: number) => {
-    console.log("Event clicked:", id);
-
+  const handleEventClick = async (id: number) => {
     // Get event details API here
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/events/${id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    setSelectedEvent({
-      id: 1,
-      name: "Private Seminar",
-      description:
-        "A conference bringing together tech enthusiasts and industry leaders.",
-      date_time: "2025-06-15 10:00:00",
-      location_name: "Orlando Convention Center",
-      latitude: 28.4255,
-      longitude: -81.309,
-      contactPhone: "+1 (555) 123-4567",
-      contactEmail: "info@techconference.com",
-      event_type: "private",
-      rso_name: "Tech Innovators Club",
-      university_name: "University of Central Florida",
-    });
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to get event details");
+      }
+
+      const { date_time, contact_email, contact_phone, ...data } =
+        await response.json();
+      const date = new Date(date_time);
+      const formattedDate = date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+      setSelectedEvent({
+        ...data,
+        contactEmail: contact_email || null,
+        contactPhone: contact_phone || null,
+        date_time: formattedDate,
+      });
+    } catch (error) {
+      console.error("Error fetching event details: ", error);
+      return;
+    }
   };
 
-  const changeEventStatus = (id: number, status: "approved" | "rejected") => {
+  const changeEventStatus = async (
+    id: number,
+    status: "approved" | "rejected"
+  ) => {
     // Accept / Deny Event API
-    console.log(`Event ${id} changed status to ${status}`);
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/events/${id}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            approved: status === "approved",
+            user: {
+              user_type: userType,
+            },
+          }),
+        }
+      );
 
-    setPendingEvents((prev) => {
-      return prev.filter((event) => event.id !== id);
-    });
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(
+          errorMessage.message || "Failed to approve/reject pending event"
+        );
+      }
+
+      setPendingEvents((prev) => {
+        return prev.filter((event) => event.id !== id);
+      });
+    } catch (error) {
+      setError("Failed to change event status");
+      console.error(`Failed to change event status for ${id}:`, error);
+    }
   };
 
   return (
@@ -105,6 +185,10 @@ const PendingEvents: React.FC<{
         </button>
 
         <h3 className="text-lg font-medium">Pending Events</h3>
+
+        {error && (
+          <ErrorDialog errorMessage={error} setErrorMessage={setError} />
+        )}
         <div className="flex flex-col gap-4 px-10">
           {pendingEvents.length === 0 ? (
             <p className="mx-auto">No Pending Events.</p>

@@ -12,7 +12,7 @@ const JoinRso: React.FC<{
   closeModal: () => void;
   updateRsos: (newRso: RSO) => void;
   userId: number;
-  universityId: number;
+  universityId: number | null;
   token: string;
 }> = ({ closeModal, updateRsos, userId, universityId, token }) => {
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +20,9 @@ const JoinRso: React.FC<{
   const [rsoList, setRsoList] = useState<RSO[]>([]);
 
   useEffect(() => {
+    if (universityId === null) {
+      closeModal();
+    }
     // Get Rso user is not part of API here
     getRsoNonMembers();
   }, []);
@@ -100,9 +103,6 @@ const JoinRso: React.FC<{
         const errorMessage = await response.json();
         throw new Error(errorMessage.message || "Failed to join RSO");
       }
-
-      const data = await response.json();
-      console.log("Successfully joined RSO:", data);
 
       updateRsos(selectedRso);
       closeModal();

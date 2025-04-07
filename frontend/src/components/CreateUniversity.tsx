@@ -4,7 +4,8 @@ import ErrorDialog from "./ErrorDialog";
 const CreateUniversity: React.FC<{
   closeModal: () => void;
   insertUniversity: (newId: number, newUniversityName: string) => void;
-}> = ({ closeModal, insertUniversity }) => {
+  token: string;
+}> = ({ closeModal, insertUniversity, token }) => {
   const [error, setError] = useState<string | null>(null);
   const [universityName, setUniversityName] = useState<string>("");
 
@@ -22,6 +23,7 @@ const CreateUniversity: React.FC<{
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ name: universityName.trim() }),
         }

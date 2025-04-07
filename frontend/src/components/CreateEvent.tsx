@@ -36,7 +36,7 @@ const CreateEvent: React.FC<{
   useEffect(() => {
     // Get rso that user is admin for API here
 
-    if (userType === "admin") {
+    if (userType !== "student") {
       getAdminRSOs();
     }
   }, []);
@@ -65,8 +65,7 @@ const CreateEvent: React.FC<{
       }
 
       const data = await response.json();
-      console.log(data);
-      setRsoList(data.rsos || []);
+      setRsoList(data);
     } catch (error) {
       console.error("Error fetching RSO list:", error);
       setError("Failed to fetch RSO list.");
@@ -214,9 +213,7 @@ const CreateEvent: React.FC<{
                 Select Event Type
               </option>
               <option value="public">Public</option>
-              {universityId !== null && (
-                <option value="private">Private</option>
-              )}
+              {universityId && <option value="private">Private</option>}
               <option value="rso">RSO</option>
             </select>
           </div>
