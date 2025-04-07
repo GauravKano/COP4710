@@ -11,32 +11,105 @@ type RSO = {
 const JoinRso: React.FC<{
   closeModal: () => void;
   updateRsos: (newRso: RSO) => void;
-}> = ({ closeModal, updateRsos }) => {
+  userId: number;
+  universityId: number;
+  token: string;
+}> = ({ closeModal, updateRsos, userId, universityId, token }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedRso, setSelectedRso] = useState<RSO | null>(null);
   const [rsoList, setRsoList] = useState<RSO[]>([]);
 
   useEffect(() => {
     // Get Rso user is not part of API here
-
-    setRsoList([
-      { id: 1, name: "Tech Club", status: "active", adminId: 1 },
-      { id: 2, name: "Art Society", status: "inactive", adminId: 2 },
-      { id: 3, name: "Entrepreneurs Network", status: "active", adminId: 3 },
-      { id: 4, name: "Gaming Club", status: "active", adminId: 4 },
-      { id: 5, name: "Music Enthusiasts", status: "inactive", adminId: 5 },
-    ]);
+    getRsoNonMembers();
   }, []);
 
-  const handleJoinRso = () => {
+  const getRsoNonMembers = async () => {
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/user/rsos/notmember`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            user: {
+              id: userId,
+              university_id: universityId,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to get rsos for user");
+      }
+
+      const data = await response.json();
+      setRsoList(
+        data.map(
+          (rso: {
+            id: number;
+            name: string;
+            status: string;
+            admin: { id: number; username: string };
+            [key: string]: unknown;
+          }) => ({
+            id: rso.id,
+            name: rso.name,
+            status: rso.status.toLowerCase() as "active" | "inactive",
+            adminId: rso.admin.id,
+          })
+        )
+      );
+    } catch (error) {
+      setError("Failed to fetch RSOs");
+      console.error("Error fetching RSOs:", error);
+    }
+  };
+
+  const handleJoinRso = async () => {
     if (!selectedRso) {
       setError("Please select an RSO to join.");
       return;
     }
 
     // Join Rso API here
-    updateRsos(selectedRso);
-    closeModal();
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/rsos/${selectedRso.id}/join`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            user: {
+              id: userId,
+              university_id: universityId,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to join RSO");
+      }
+
+      const data = await response.json();
+      console.log("Successfully joined RSO:", data);
+
+      updateRsos(selectedRso);
+      closeModal();
+    } catch (error) {
+      setError("Failed to join RSO. Please try again later.");
+      console.error("Error joining RSO:", error);
+    }
   };
 
   return (
