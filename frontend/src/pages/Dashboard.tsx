@@ -22,7 +22,7 @@ type EventDetails = {
   contactPhone: string | null;
   contactEmail: string | null;
   event_type: "public" | "private" | "rso";
-  ratings: number;
+  ratings: number | null;
   comments: Comment[];
   university_name: string | null;
   rso_name: string | null;
@@ -37,16 +37,6 @@ type Comment = {
   [key: string]: string | number | null;
 };
 
-type APIComment = {
-  id: number;
-  content: string;
-  user: {
-    id: number;
-    username: string;
-  };
-  [key: string]: unknown;
-};
-
 type user = {
   id?: number;
   username?: string;
@@ -54,6 +44,7 @@ type user = {
   phone?: string;
   universityId?: number;
   userType?: "super_admin" | "admin" | "student";
+  token?: string;
 };
 
 const Dashboard = () => {
@@ -87,44 +78,81 @@ const Dashboard = () => {
       if (key.trim() === "universityId") {
         cookieObject.universityId = parseInt(value.trim());
       }
+      if (key.trim() === "token") {
+        cookieObject.token = value.trim();
+      }
     });
 
-    if (!cookieObject || !cookieObject.id || !cookieObject.userType) {
+    if (
+      !cookieObject ||
+      !cookieObject.id ||
+      !cookieObject.userType ||
+      !cookieObject.token
+    ) {
       navigate("/login");
     } else {
       setUserData(cookieObject);
+      getEventsForUser(cookieObject);
     }
   };
 
-  const getEventsForUser = async () => {
+  const getEventsForUser = async (cookieObject: user) => {
     // Get events for user API here
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/user/events`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${cookieObject?.token || ""}`,
+          },
+          body: JSON.stringify({
+            user_id: cookieObject.id,
+            university_id: cookieObject.universityId,
+          }),
+        }
+      );
 
-    setEvents([
-      {
-        id: 1,
-        name: "Campus Meetup",
-        date_time: "2025-06-15 10:00:00",
-        event_type: "public",
-      },
-      {
-        id: 2,
-        name: "RSO Club Gathering",
-        date_time: "2025-06-15 10:00:00",
-        event_type: "rso",
-      },
-      {
-        id: 3,
-        name: "Private Seminar",
-        date_time: "2025-06-15 10:00:00",
-        event_type: "private",
-      },
-    ]);
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(
+          errorMessage.message || "Failed to get events for user"
+        );
+      }
+
+      const data = await response.json();
+      setEvents(
+        data.map(
+          (event: {
+            id: number;
+            name: string;
+            time: string;
+            type: "public" | "private" | "rso";
+            [key: string]: unknown;
+          }) => ({
+            id: event.id,
+            name: event.name,
+            date_time: new Date(event.time).toLocaleString("en-US", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            }),
+            event_type: event.type,
+          })
+        )
+      );
+    } catch (error) {
+      console.error("Error fetching events: ", error);
+      return;
+    }
   };
 
   useEffect(() => {
     getCookieData();
-
-    getEventsForUser();
   }, []);
 
   const handleEventClick = async (id: number) => {
@@ -137,31 +165,65 @@ const Dashboard = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${userData?.token || ""}`,
           },
         }
       );
 
       if (!response.ok) {
         const errorMessage = await response.json();
-        throw new Error(errorMessage.message || "Failed to get event details");
+        throw new Error(errorMessage.message || "Failed to get comments");
       }
 
       const data = await response.json();
-      eventComments = data.map((comment: APIComment) => {
-        return {
-          id: comment.id,
-          content: comment.content,
-          name: comment.user.username,
-          user_id: comment.user.id,
-        };
-      });
+      eventComments = data.map(
+        (comment: {
+          id: number;
+          content: string;
+          user: {
+            id: number;
+            username: string;
+          };
+          [key: string]: unknown;
+        }) => {
+          return {
+            id: comment.id,
+            content: comment.content,
+            name: comment.user.username,
+            user_id: comment.user.id,
+          };
+        }
+      );
     } catch (error) {
       console.error("Error fetching event comments: ", error);
-      return;
     }
 
+    let eventRating = null;
     // Get avg event rating API here
-    const eventRating = 3;
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/events/${id}/ratings`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userData?.token || ""}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(
+          errorMessage.message || "Failed to get average ratings"
+        );
+      }
+
+      const data = await response.json();
+      eventRating = data.average_rating;
+    } catch (error) {
+      console.error("Error fetching event ratings: ", error);
+    }
 
     // Get event details API here
     try {
@@ -171,6 +233,7 @@ const Dashboard = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${userData?.token || ""}`,
           },
         }
       );
@@ -193,7 +256,7 @@ const Dashboard = () => {
       setSelectedEvent({
         ...data,
         date_time: formattedDate,
-        ratings: eventRating || 0,
+        ratings: eventRating,
         comments: eventComments,
       });
     } catch (error) {
@@ -252,6 +315,7 @@ const Dashboard = () => {
           userId={userData?.id || 0}
           username={userData?.username || ""}
           setEvent={setSelectedEvent}
+          token={userData?.token || ""}
         />
       )}
 

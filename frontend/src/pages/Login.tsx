@@ -10,6 +10,7 @@ type user = {
   phone?: string;
   universityId?: number;
   userType?: "super_admin" | "admin" | "student";
+  token?: string;
 };
 
 const Login = () => {
@@ -42,9 +43,17 @@ const Login = () => {
       if (key.trim() === "universityId") {
         cookieObject.universityId = parseInt(value.trim());
       }
+      if (key.trim() === "token") {
+        cookieObject.token = value.trim();
+      }
     });
 
-    if (cookieObject && cookieObject.id && cookieObject.userType) {
+    if (
+      cookieObject &&
+      cookieObject.id &&
+      cookieObject.userType &&
+      cookieObject.token
+    ) {
       navigate("/dashboard");
     }
   };
@@ -89,6 +98,7 @@ const Login = () => {
         document.cookie = `username=${userData.username}; path=/`;
         document.cookie = `userType=${userData.user_type}; path=/`;
         document.cookie = `universityId=${userData.university_id}; path=/`;
+        document.cookie = `token=${data.token}; path=/`;
 
         navigate("/dashboard");
       } catch (error) {

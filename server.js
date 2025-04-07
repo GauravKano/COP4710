@@ -1055,11 +1055,9 @@ app.post("/api/rsos", authenticateUser, async (req, res) => {
     !member_emails ||
     !Array.isArray(member_emails)
   ) {
-    return res
-      .status(400)
-      .json({
-        message: "Name, university_id, and member_emails array are required",
-      });
+    return res.status(400).json({
+      message: "Name, university_id, and member_emails array are required",
+    });
   }
 
   if (member_emails.length < 4) {
@@ -1468,7 +1466,7 @@ app.post("/api/rsos/:rsoId/join", authenticateUser, async (req, res) => {
 app.post("/api/events/:id/ratings", async (req, res) => {
   try {
     const eventId = req.params.id;
-    const { user_id, rating, comment } = req.body;
+    const { user_id, rating } = req.body;
 
     if (!user_id || rating === undefined) {
       return res
@@ -1513,8 +1511,8 @@ app.post("/api/events/:id/ratings", async (req, res) => {
 
             // Insert the new rating
             db.query(
-              "INSERT INTO Ratings (event_id, user_id, rating, comment) VALUES (?, ?, ?, ?)",
-              [eventId, user_id, rating, comment || null],
+              "INSERT INTO Ratings (event_id, user_id, rating) VALUES (?, ?, ?)",
+              [eventId, user_id, rating],
               (err, insertResults) => {
                 if (err) {
                   console.error("Database error:", err);
