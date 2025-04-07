@@ -24,7 +24,7 @@ type Event = {
   contactPhone: string | null;
   contactEmail: string | null;
   event_type: "public" | "private" | "rso";
-  ratings: number;
+  ratings: number | null;
   comments: Comment[];
   university_name: string | null;
   rso_name: string | null;
@@ -42,7 +42,8 @@ const EventModal: React.FC<{
   userId: number;
   setEvent: React.Dispatch<React.SetStateAction<Event | null>>;
   username: string;
-}> = ({ event, userId, setEvent, closeModal, username }) => {
+  token: string;
+}> = ({ event, userId, setEvent, closeModal, username, token }) => {
   const [myRating, setMyRating] = useState<Rating | null>(null);
   const [deleteRating, setDeleteRating] = useState<boolean>(false);
   const [deleteComment, setDeleteComment] = useState<Comment | null>(null);
@@ -54,13 +55,39 @@ const EventModal: React.FC<{
     setMyRating(null);
   }, []);
 
-  const handleAddRating = (index: number) => {
+  const handleAddRating = async (index: number) => {
     // const ratingId = Add Rating API here
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/events/${event.id}/ratings`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            rating: index + 1,
+            user_id: userId,
+          }),
+        }
+      );
 
-    setMyRating({
-      id: 1,
-      rating: index + 1,
-    });
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to add rating");
+      }
+
+      const data = await response.json();
+      console.log(data);
+    } catch (error) {
+      console.error("Error adding rating:", error);
+    }
+
+    // setMyRating({
+    //   id: 1,
+    //   rating: index + 1,
+    // });
 
     console.log("Add Rating");
   };
@@ -110,7 +137,9 @@ const EventModal: React.FC<{
         {event.event_type === "rso" && (
           <p className="text-sm">RSO Name: {event.rso_name}</p>
         )}
-        <p className="text-sm">Ratings: {event.ratings}</p>
+        {event.ratings !== null && (
+          <p className="text-sm">Ratings: {event.ratings}</p>
+        )}
         {event.contactPhone && (
           <p className="text-sm">Contact Phone Number: {event.contactPhone}</p>
         )}

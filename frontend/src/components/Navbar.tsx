@@ -30,6 +30,7 @@ const Navbar: React.FC<{ loggedIn: boolean }> = ({ loggedIn }) => {
     document.cookie = `username=; path=/`;
     document.cookie = `userType=; path=/`;
     document.cookie = `universityId=; path=/`;
+    document.cookie = `token=; path=/`;
 
     navigate("/login");
   };
