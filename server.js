@@ -1570,7 +1570,7 @@ app.get("/api/events/:id/ratings", (req, res) => {
 app.put("/api/events/:id/ratings", (req, res) => {
   try {
     const eventId = req.params.id;
-    const { user_id, rating, comment } = req.body;
+    const { user_id, rating } = req.body;
 
     if (!user_id || rating === undefined) {
       return res
@@ -1601,8 +1601,8 @@ app.put("/api/events/:id/ratings", (req, res) => {
 
         // Update the rating record
         db.query(
-          "UPDATE Ratings SET rating = ?, comment = ? WHERE event_id = ? AND user_id = ?",
-          [rating, comment || null, eventId, user_id],
+          "UPDATE Ratings SET rating = ? WHERE event_id = ? AND user_id = ?",
+          [rating, eventId, user_id],
           (err) => {
             if (err) {
               console.error("Database error:", err);
