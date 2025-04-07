@@ -4,19 +4,22 @@ import ErrorDialog from "./ErrorDialog";
 type RSO = {
   id: number;
   name: string;
+  [key: string]: string | number;
 };
 
 const CreateEvent: React.FC<{
   closeModal: () => void;
   userId: number;
-  universityId: number;
+  universityId: number | null;
+  token: string;
+  userType: "super_admin" | "admin" | "student";
   updateEvents: (
     id: number,
     name: string,
     date_time: string,
     event_type: "public" | "private" | "rso"
   ) => void;
-}> = ({ closeModal, userId, universityId, updateEvents }) => {
+}> = ({ closeModal, userId, universityId, updateEvents, token, userType }) => {
   const [eventName, setEventName] = useState<string>("");
   const [eventType, setEventType] = useState<
     "public" | "private" | "rso" | null
@@ -33,12 +36,43 @@ const CreateEvent: React.FC<{
   useEffect(() => {
     // Get rso that user is admin for API here
 
-    setRsoList([
-      { name: "KnightHacks", id: 1 },
-      { name: "AI@UCF", id: 2 },
-      { name: "Hack@UCF", id: 3 },
-    ]);
+    getAdminRSOs();
+    if (userType === "admin") {
+      return;
+    }
   }, []);
+
+  const getAdminRSOs = async () => {
+    try {
+      const response = await fetch(`http://35.175.224.17:8080/api/admin/rsos`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user: {
+            id: userId,
+            user_type: userType,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(
+          errorMessage.message || "Failed to get rsos where user is admin"
+        );
+      }
+
+      const data = await response.json();
+      console.log(data);
+      setRsoList(data.rsos || []);
+    } catch (error) {
+      console.error("Error fetching RSO list:", error);
+      setError("Failed to fetch RSO list.");
+    }
+  };
 
   const formatContactPhone = (phone: string) => {
     const phoneNum = phone.replace(/\D/g, "");
@@ -180,7 +214,9 @@ const CreateEvent: React.FC<{
                 Select Event Type
               </option>
               <option value="public">Public</option>
-              <option value="private">Private</option>
+              {universityId !== null && (
+                <option value="private">Private</option>
+              )}
               <option value="rso">RSO</option>
             </select>
           </div>

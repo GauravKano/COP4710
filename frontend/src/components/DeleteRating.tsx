@@ -1,9 +1,34 @@
 const DeleteRating: React.FC<{
   closeModal: () => void;
   updateRating: () => void;
-}> = ({ closeModal, updateRating }) => {
-  const handleDelete = () => {
+  userId: number;
+  token: string;
+  eventId: number;
+}> = ({ closeModal, updateRating, eventId, userId, token }) => {
+  const handleDelete = async () => {
     //Remove Rating API here
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/events/${eventId}/ratings`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            user_id: userId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to delete rating");
+      }
+    } catch (error) {
+      console.error("Error deleting rating:", error);
+    }
 
     updateRating();
     closeModal();

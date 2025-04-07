@@ -1234,7 +1234,7 @@ app.delete("/api/rsos/:id", authenticateUser, (req, res) => {
 });
 
 // Get RSOs where user is the creator
-app.get("/api/admin/rsos", authenticateUser, async (req, res) => {
+app.post("/api/admin/rsos", authenticateUser, async (req, res) => {
   try {
     const userId = req.user.id;
     const userType = req.user.user_type;

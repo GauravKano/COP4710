@@ -10,9 +10,10 @@ type Comment = {
 
 const DeleteComment: React.FC<{
   comment: Comment;
+  token: string;
   closeModal: () => void;
   updateComments: (commentId: number) => void;
-}> = ({ comment, closeModal, updateComments }) => {
+}> = ({ comment, closeModal, updateComments, token }) => {
   const [error, setError] = useState<string | null>(null);
 
   const handleDelete = async () => {
@@ -22,6 +23,10 @@ const DeleteComment: React.FC<{
         `http://35.175.224.17:8080/api/comments/${comment.id}`,
         {
           method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
