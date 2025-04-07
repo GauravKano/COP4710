@@ -36,16 +36,15 @@ const CreateEvent: React.FC<{
   useEffect(() => {
     // Get rso that user is admin for API here
 
-    getAdminRSOs();
     if (userType === "admin") {
-      return;
+      getAdminRSOs();
     }
   }, []);
 
   const getAdminRSOs = async () => {
     try {
       const response = await fetch(`http://35.175.224.17:8080/api/admin/rsos`, {
-        method: "GET",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -119,6 +118,7 @@ const CreateEvent: React.FC<{
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authoization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             name: eventName.trim(),

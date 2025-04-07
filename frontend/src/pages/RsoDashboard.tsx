@@ -11,6 +11,7 @@ type user = {
   phone?: string;
   universityId?: number;
   userType?: "super_admin" | "admin" | "student";
+  token?: string;
 };
 
 type Rso = {
@@ -51,17 +52,67 @@ const RsoDashboard = () => {
       if (key.trim() === "universityId") {
         cookieObject.universityId = parseInt(value.trim());
       }
+      if (key.trim() === "token") {
+        cookieObject.token = value.trim();
+      }
     });
 
-    if (!cookieObject || !cookieObject.id || !cookieObject.userType) {
+    if (
+      !cookieObject ||
+      !cookieObject.id ||
+      !cookieObject.userType ||
+      !cookieObject.token
+    ) {
       navigate("/login");
     } else {
       setUserData(cookieObject);
     }
   };
 
-  const getRso = () => {
+  const getRso = async () => {
     // Get Rso for user API here
+    try {
+      const response = await fetch(`http://35.175.224.17:8080/api/user/rsos`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authoirization: `Bearer ${userData?.token}`,
+        },
+        body: JSON.stringify({
+          user: {
+            id: userData?.id,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to get rsos for user");
+      }
+
+      const data = await response.json();
+      console.log(data);
+      setRsos(
+        data.map(
+          (rso: {
+            id: number;
+            name: string;
+            status: string;
+            admin: { id: number; username: string };
+            [key: string]: unknown;
+          }) => {
+            return {
+              id: rso.id,
+              name: rso.name,
+              status: rso.status.toLowerCase() as "active" | "inactive",
+              adminId: rso.admin.id,
+            };
+          }
+        )
+      );
+    } catch (error) {
+      console.error("Error fetching RSOs:", error);
+    }
 
     setRsos([
       {

@@ -1279,7 +1279,7 @@ app.post("/api/admin/rsos", authenticateUser, async (req, res) => {
 });
 
 // Get all RSOs the user is part of
-app.get("/api/user/rsos", authenticateUser, async (req, res) => {
+app.post("/api/user/rsos", authenticateUser, async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -1331,7 +1331,7 @@ app.get("/api/user/rsos", authenticateUser, async (req, res) => {
 });
 
 // Get all RSOs the user is not part of
-app.get("/api/user/rsos/notmember", authenticateUser, async (req, res) => {
+app.post("/api/user/rsos/notmember", authenticateUser, async (req, res) => {
   try {
     const userId = req.user.id;
     const universityId = req.user.university_id;
