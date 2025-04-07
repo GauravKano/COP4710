@@ -66,21 +66,22 @@ const RsoDashboard = () => {
       navigate("/login");
     } else {
       setUserData(cookieObject);
+      getRso(cookieObject);
     }
   };
 
-  const getRso = async () => {
+  const getRso = async (cookieObject: user) => {
     // Get Rso for user API here
     try {
       const response = await fetch(`http://35.175.224.17:8080/api/user/rsos`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authoirization: `Bearer ${userData?.token}`,
+          Authorization: `Bearer ${cookieObject?.token || ""}`,
         },
         body: JSON.stringify({
           user: {
-            id: userData?.id,
+            id: cookieObject?.id,
           },
         }),
       });
@@ -91,7 +92,6 @@ const RsoDashboard = () => {
       }
 
       const data = await response.json();
-      console.log(data);
       setRsos(
         data.map(
           (rso: {
@@ -113,45 +113,10 @@ const RsoDashboard = () => {
     } catch (error) {
       console.error("Error fetching RSOs:", error);
     }
-
-    setRsos([
-      {
-        id: 1,
-        name: "Tech Innovators",
-        status: "active",
-        adminId: 1,
-      },
-      {
-        id: 2,
-        name: "Green Earth Society",
-        status: "active",
-        adminId: 102,
-      },
-      {
-        id: 3,
-        name: "AI & Machine Learning Club",
-        status: "inactive",
-        adminId: 103,
-      },
-      {
-        id: 4,
-        name: "Photography Enthusiasts",
-        status: "active",
-        adminId: 104,
-      },
-      {
-        id: 5,
-        name: "Esports & Gaming Club",
-        status: "inactive",
-        adminId: 105,
-      },
-    ]);
   };
 
   useEffect(() => {
     getCookieData();
-
-    getRso();
   }, []);
 
   return (
@@ -201,6 +166,9 @@ const RsoDashboard = () => {
 
       {joinRSO && (
         <JoinRso
+          userId={userData?.id || 0}
+          universityId={userData?.universityId || 0}
+          token={userData?.token || ""}
           closeModal={() => setJoinRSO(false)}
           updateRsos={(newRso: Rso) => {
             setRsos((prev) => [newRso, ...prev]);

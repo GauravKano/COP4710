@@ -1435,8 +1435,8 @@ app.post("/api/rsos/:rsoId/join", authenticateUser, async (req, res) => {
 
     // Add user to RSO
     await db.promise().query(
-      `INSERT INTO RSO_Members (rso_id, student_id, joined_at) 
-       VALUES (?, ?, NOW())`,
+      `INSERT INTO RSO_Members (rso_id, student_id) 
+       VALUES (?, ?)`,
       [rsoId, userId]
     );
 
