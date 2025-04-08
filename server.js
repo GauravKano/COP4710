@@ -1232,7 +1232,7 @@ app.delete("/api/rsos/:id", authenticateUser, (req, res) => {
 });
 
 // Get RSOs where user is the creator
-app.post("/api/admin/rsos", authenticateUser, async (req, res) => {
+app.get("/api/admin/rsos", authenticateUser, async (req, res) => {
   try {
     const userId = req.user.id;
     const userType = req.user.user_type;
@@ -1277,7 +1277,7 @@ app.post("/api/admin/rsos", authenticateUser, async (req, res) => {
 });
 
 // Get all RSOs the user is part of
-app.post("/api/user/rsos", authenticateUser, async (req, res) => {
+app.get("/api/user/rsos", authenticateUser, async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -1329,7 +1329,7 @@ app.post("/api/user/rsos", authenticateUser, async (req, res) => {
 });
 
 // Get all RSOs the user is not part of
-app.post("/api/user/rsos/notmember", authenticateUser, async (req, res) => {
+app.get("/api/user/rsos/notmember", authenticateUser, async (req, res) => {
   try {
     const userId = req.user.id;
     const universityId = req.user.university_id;

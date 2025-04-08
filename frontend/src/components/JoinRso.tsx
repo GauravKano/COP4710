@@ -32,17 +32,11 @@ const JoinRso: React.FC<{
       const response = await fetch(
         `http://35.175.224.17:8080/api/user/rsos/notmember`,
         {
-          method: "POST",
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            user: {
-              id: userId,
-              university_id: universityId,
-            },
-          }),
         }
       );
 

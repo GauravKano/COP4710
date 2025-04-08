@@ -4,6 +4,7 @@ import DeleteComment from "./DeleteComment";
 import EditComment from "./EditComment";
 import AddComment from "./AddComment";
 import DeleteRating from "./DeleteRating";
+import { MapContainer, Marker, TileLayer } from "react-leaflet";
 
 type Comment = {
   content: string;
@@ -169,8 +170,20 @@ const EventModal: React.FC<{
           <p className="text-sm">Description: {event.description}</p>
         )}
         <p className="text-sm">Location: {event.location_name}</p>
+        <MapContainer
+          className="mt-2"
+          center={[event.latitude, event.longitude]}
+          zoom={13}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <Marker position={[event.latitude, event.longitude]}></Marker>
+        </MapContainer>
 
-        <div className="flex flex-col mt-6 gap-3 my-3">
+        <div className="flex flex-col mt-4 gap-3 my-3">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-lg font-medium">My Rating:</h3>
             <button

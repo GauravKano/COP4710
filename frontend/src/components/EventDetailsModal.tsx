@@ -1,4 +1,5 @@
 import { FaXmark } from "react-icons/fa6";
+import { MapContainer, Marker, TileLayer } from "react-leaflet";
 
 type Event = {
   id: number;
@@ -64,6 +65,19 @@ const EventDetailsModal: React.FC<{
           <p className="text-sm">Description: {event.description}</p>
         )}
         <p className="text-sm">Location: {event.location_name}</p>
+
+        <MapContainer
+          className="mt-2"
+          center={[event.latitude, event.longitude]}
+          zoom={13}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <Marker position={[event.latitude, event.longitude]}></Marker>
+        </MapContainer>
       </div>
     </div>
   );

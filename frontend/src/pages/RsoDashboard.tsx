@@ -74,16 +74,11 @@ const RsoDashboard = () => {
     // Get Rso for user API here
     try {
       const response = await fetch(`http://35.175.224.17:8080/api/user/rsos`, {
-        method: "POST",
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${cookieObject?.token || ""}`,
         },
-        body: JSON.stringify({
-          user: {
-            id: cookieObject?.id,
-          },
-        }),
       });
 
       if (!response.ok) {

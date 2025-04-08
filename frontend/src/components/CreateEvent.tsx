@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
+import { MapContainer, Marker, TileLayer } from "react-leaflet";
 
 type RSO = {
   id: number;
@@ -32,6 +33,8 @@ const CreateEvent: React.FC<{
   const [contactEmail, setContactEmail] = useState<string>("");
   const [locationName, setLocationName] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [latitude, setLatitude] = useState<number>(39.8283);
+  const [longitude, setLongitude] = useState<number>(-98.5795);
 
   useEffect(() => {
     // Get rso that user is admin for API here
@@ -44,17 +47,11 @@ const CreateEvent: React.FC<{
   const getAdminRSOs = async () => {
     try {
       const response = await fetch(`http://35.175.224.17:8080/api/admin/rsos`, {
-        method: "POST",
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          user: {
-            id: userId,
-            user_type: userType,
-          },
-        }),
       });
 
       if (!response.ok) {
@@ -124,8 +121,8 @@ const CreateEvent: React.FC<{
             description: description.trim() || null,
             date_time: dateTime,
             location_name: locationName.trim(),
-            latitude: 1,
-            longitude: 1,
+            latitude: latitude,
+            longitude: longitude,
             contact_phone: contactPhone || null,
             contact_email: contactEmail.trim() || null,
             event_type: eventType,
@@ -296,6 +293,53 @@ const CreateEvent: React.FC<{
               className="w-full px-3 py-1.5 border rounded-md"
             />
           </div>
+
+          <div className="flex gap-4 items-center">
+            <p className="text-nowrap">Latitude: </p>
+            <input
+              type="number"
+              step={"any"}
+              placeholder="Enter Latitude"
+              value={latitude}
+              onChange={(e) => setLatitude(Number(e.target.value))}
+              className="w-full px-3 py-1.5 border rounded-md"
+            />
+          </div>
+
+          <div className="flex gap-4 items-center">
+            <p className="text-nowrap">Longitude: </p>
+            <input
+              type="number"
+              step={"any"}
+              placeholder="Enter Latitude"
+              value={longitude}
+              onChange={(e) => setLongitude(Number(e.target.value))}
+              className="w-full px-3 py-1.5 border rounded-md"
+            />
+          </div>
+
+          <MapContainer
+            center={[latitude, longitude]}
+            zoom={3}
+            scrollWheelZoom={true}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Marker
+              position={[latitude, longitude]}
+              draggable={true}
+              eventHandlers={{
+                dragend: (event) => {
+                  const marker = event.target;
+                  const position = marker.getLatLng();
+                  setLatitude(position.lat);
+                  setLongitude(position.lng);
+                },
+              }}
+            ></Marker>
+          </MapContainer>
         </div>
 
         <div className="flex justify-end items-center gap-4">
