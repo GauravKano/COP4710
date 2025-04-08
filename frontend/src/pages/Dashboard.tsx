@@ -102,15 +102,11 @@ const Dashboard = () => {
       const response = await fetch(
         `http://35.175.224.17:8080/api/user/events`,
         {
-          method: "POST",
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${cookieObject?.token || ""}`,
           },
-          body: JSON.stringify({
-            user_id: cookieObject.id,
-            university_id: cookieObject.universityId,
-          }),
         }
       );
 
