@@ -765,10 +765,11 @@ app.delete("/api/events/:id", (req, res) => {
 });
 
 // Get all events for the corresponding user
-app.post("/api/user/events", authenticateUser, async (req, res) => {
+app.get('/api/user/events', authenticateUser, async (req, res) => {
   try {
     const userId = req.user.id;
     const universityId = req.user.university_id;
+    const currentDateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     const query = `
       SELECT 
@@ -786,28 +787,26 @@ app.post("/api/user/events", authenticateUser, async (req, res) => {
       LEFT JOIN RSOs r ON e.rso_id = r.id
       WHERE 
         (e.status = 'approved') AND
+        (e.date_time > ?) AND  -- Only future events
         (
-          /* RSO events the user is part of */
           (e.event_type = 'rso' AND e.rso_id IN (
             SELECT rso_id FROM RSO_Members WHERE student_id = ?
           ))
           OR
-          /* Public events from user's university */
-          (e.event_type = 'public' AND e.university_id = ?)
+          (e.event_type = 'public')
           OR
-          /* Private events from user's university */
-          (e.event_type = 'private' AND e.university_id = ?)
+          (e.event_type = 'private' AND (e.university_id = ? OR e.university_id IS NULL))
         )
       ORDER BY e.date_time ASC
     `;
 
-    db.query(query, [userId, universityId, universityId], (err, results) => {
+    db.query(query, [currentDateTime, userId, universityId], (err, results) => {
       if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ message: "Failed to fetch events" });
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Failed to fetch events' });
       }
 
-      const formattedEvents = results.map((event) => ({
+      const formattedEvents = results.map(event => ({
         id: event.event_id,
         name: event.event_name,
         type: event.event_type,
@@ -816,43 +815,40 @@ app.post("/api/user/events", authenticateUser, async (req, res) => {
           name: event.location_name,
           coordinates: {
             latitude: event.latitude,
-            longitude: event.longitude,
-          },
+            longitude: event.longitude
+          }
         },
-        university: event.university_id
-          ? {
-              id: event.university_id,
-              name: event.university_name,
-            }
-          : null,
-        rso: event.rso_id
-          ? {
-              id: event.rso_id,
-              name: event.rso_name,
-            }
-          : null,
+        university: event.university_id ? {
+          id: event.university_id,
+          name: event.university_name
+        } : null,
+        rso: event.rso_id ? {
+          id: event.rso_id,
+          name: event.rso_name
+        } : null
       }));
 
       res.status(200).json(formattedEvents);
     });
+
   } catch (error) {
-    console.error("Get user events error:", error);
-    res
-      .status(500)
-      .json({ message: "Server error while fetching user events" });
+    console.error('Get user events error:', error);
+    res.status(500).json({ message: 'Server error while fetching user events' });
   }
 });
 
 // Get all pending public events
-app.get("/api/pendingpublic/events", authenticateUser, async (req, res) => {
+app.get('/api/pendingpublic/events', authenticateUser, async (req, res) => {
   try {
     // Check admin status
-    if (!["admin", "super_admin"].includes(req.user.user_type)) {
-      return res.status(403).json({
-        message: "Admin access required",
-        user_type: req.user.user_type,
+    if (!['admin', 'super_admin'].includes(req.user.user_type)) {
+      return res.status(403).json({ 
+        message: 'Admin access required',
+        user_type: req.user.user_type 
       });
     }
+
+    const currentDateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     const query = `
       SELECT 
@@ -862,30 +858,32 @@ app.get("/api/pendingpublic/events", authenticateUser, async (req, res) => {
       FROM Events
       WHERE 
         event_type = 'public' COLLATE utf8mb4_general_ci AND
-        status = 'pending' COLLATE utf8mb4_general_ci
+        status = 'pending' COLLATE utf8mb4_general_ci AND
+        date_time > ?  -- Only future events
       ORDER BY date_time ASC
     `;
 
-    db.query(query, (err, results) => {
+    db.query(query, [currentDateTime], (err, results) => {
       if (err) {
-        return res.status(500).json({
-          message: "Query execution failed",
-          error: err.message,
+        return res.status(500).json({ 
+          message: 'Query execution failed',
+          error: err.message 
         });
       }
 
-      const response = results.map((event) => ({
+      const response = results.map(event => ({
         id: event.id,
         name: event.name,
-        time: event.time,
+        time: event.time
       }));
 
       res.status(200).json(response);
     });
+
   } catch (error) {
-    res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message 
     });
   }
 });
@@ -1458,6 +1456,66 @@ app.post("/api/rsos/:rsoId/join", authenticateUser, async (req, res) => {
   }
 });
 
+// Leave RSO
+app.delete('/api/rsos/:rsoId/leave', authenticateUser, async (req, res) => {
+  try {
+    const rsoId = req.params.rsoId;
+    const userId = req.user.id;
+
+    // First check if the user is the admin of this RSO
+    const [adminCheck] = await db.promise().query(
+      `SELECT admin_id FROM RSOs WHERE id = ?`,
+      [rsoId]
+    );
+
+    if (adminCheck.length === 0) {
+      return res.status(404).json({ message: 'RSO not found' });
+    }
+
+    if (adminCheck[0].admin_id === userId) {
+      return res.status(403).json({ 
+        message: 'Cannot leave RSO as you are the admin. Transfer admin rights or delete the RSO instead.' 
+      });
+    }
+
+    // Check if the user is actually a member
+    const [membershipCheck] = await db.promise().query(
+      `SELECT id FROM RSO_Members 
+       WHERE rso_id = ? AND student_id = ?`,
+      [rsoId, userId]
+    );
+
+    if (membershipCheck.length === 0) {
+      return res.status(400).json({ 
+        message: 'You are not a member of this RSO' 
+      });
+    }
+
+    // Remove the user from the RSO
+    await db.promise().query(
+      `DELETE FROM RSO_Members 
+       WHERE rso_id = ? AND student_id = ?`,
+      [rsoId, userId]
+    );
+
+    res.status(200).json({ 
+      message: 'Successfully left the RSO',
+      rso_id: rsoId
+    });
+
+  } catch (error) {
+    console.error('Leave RSO error:', {
+      message: error.message,
+      sql: error.sql,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      message: 'Server error while leaving RSO',
+      error: error.message
+    });
+  }
+});
+
 /* -------------------------------------------------------------------------- */
 /*                                rating                                      */
 /* -------------------------------------------------------------------------- */
@@ -1661,6 +1719,53 @@ app.delete("/api/events/:id/ratings", (req, res) => {
   } catch (error) {
     console.error("Error deleting rating:", error);
     res.status(500).json({ message: "Server error while deleting rating" });
+  }
+});
+
+// Get a users rating for an event
+app.get('/api/events/:eventId/user-rating', authenticateUser, async (req, res) => {
+  try {
+    const eventId = req.params.eventId;
+    const userId = req.user.id;
+
+    const query = `
+      SELECT id AS rating_id, rating 
+      FROM Ratings 
+      WHERE event_id = ? AND user_id = ?
+      LIMIT 1
+    `;
+
+    db.query(query, [eventId, userId], (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ 
+          message: 'Failed to fetch rating',
+          error: err.message 
+        });
+      }
+
+      if (results.length === 0) {
+        return res.status(404).json({ 
+          message: 'No rating found for this user and event',
+          hasRated: false
+        });
+      }
+
+      const ratingData = {
+        rating_id: results[0].rating_id,
+        rating: results[0].rating,
+        hasRated: true
+      };
+
+      res.status(200).json(ratingData);
+    });
+
+  } catch (error) {
+    console.error('Get user rating error:', error);
+    res.status(500).json({ 
+      message: 'Server error while fetching user rating',
+      error: error.message
+    });
   }
 });
 
