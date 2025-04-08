@@ -43,6 +43,7 @@ CREATE TABLE Events (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     date_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
     location_name VARCHAR(255) NOT NULL,
     latitude DECIMAL(9,6) NOT NULL,
     longitude DECIMAL(9,6) NOT NULL,

@@ -455,56 +455,106 @@ app.post("/api/events", async (req, res) => {
         .json({ message: "RSO ID is required for RSO events" });
     }
 
-    let status = "pending";
-    if (event_type === "rso" || event_type === "private") {
-      status = "approved";
-    }
+    // Calculate end_time
+    const startTime = new Date(date_time);
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour
 
-    // Insert new event
+    // Check for overlapping events at the same location
+    const overlapCheckQuery = `
+      SELECT id, name, date_time, end_time 
+      FROM Events 
+      WHERE location_name = ? 
+        AND (
+          (date_time BETWEEN ? AND ?) OR 
+          (end_time BETWEEN ? AND ?) OR
+          (date_time <= ? AND end_time >= ?)
+        )
+    `;
+
     db.query(
-      `INSERT INTO Events (
-        name, description, date_time, location_name, latitude, longitude,
-        contact_phone, contact_email, event_type, rso_id, university_id, 
-        created_by, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      overlapCheckQuery,
       [
-        name,
-        description || null,
-        date_time,
         location_name,
-        latitude,
-        longitude,
-        contact_phone || null,
-        contact_email || null,
-        event_type,
-        rso_id || null,
-        university_id || null,
-        created_by,
-        status,
+        date_time,
+        endTime.toISOString().slice(0, 19).replace('T', ' '),
+        date_time,
+        endTime.toISOString().slice(0, 19).replace('T', ' '),
+        date_time,
+        endTime.toISOString().slice(0, 19).replace('T', ' '),
       ],
-      (err, results) => {
+      (err, overlapResults) => {
         if (err) {
-          console.error("Database error:", err);
-          return res.status(500).json({ message: "Failed to create event" });
+          console.error("Database error checking overlaps:", err);
+          return res.status(500).json({ message: "Error checking for overlapping events" });
         }
 
-        // Return the created event
+        if (overlapResults.length > 0) {
+          const overlappingEvent = overlapResults[0];
+          return res.status(409).json({
+            message: "Event conflicts with an existing event at this location",
+            conflictingEvent: {
+              id: overlappingEvent.id,
+              name: overlappingEvent.name,
+              start_time: overlappingEvent.date_time,
+              end_time: overlappingEvent.end_time
+            }
+          });
+        }
+
+        // If no overlaps, proceed with event creation
+        let status = "pending";
+        if (event_type === "rso" || event_type === "private") {
+          status = "approved";
+        }
+
+        // Insert new event
         db.query(
-          "SELECT * FROM Events WHERE id = ?",
-          [results.insertId],
-          (err, eventResults) => {
-            if (err || eventResults.length === 0) {
-              return res.status(201).json({
-                message:
-                  "Event created successfully (but could not retrieve details)",
-                event_id: results.insertId,
-              });
+          `INSERT INTO Events (
+            name, description, date_time, end_time, location_name, latitude, longitude,
+            contact_phone, contact_email, event_type, rso_id, university_id, 
+            created_by, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            name,
+            description || null,
+            date_time,
+            endTime.toISOString().slice(0, 19).replace('T', ' '),
+            location_name,
+            latitude,
+            longitude,
+            contact_phone || null,
+            contact_email || null,
+            event_type,
+            rso_id || null,
+            university_id || null,
+            created_by,
+            status,
+          ],
+          (err, results) => {
+            if (err) {
+              console.error("Database error:", err);
+              return res.status(500).json({ message: "Failed to create event" });
             }
 
-            res.status(201).json({
-              message: "Event created successfully",
-              event: eventResults[0],
-            });
+            // Return the created event
+            db.query(
+              "SELECT * FROM Events WHERE id = ?",
+              [results.insertId],
+              (err, eventResults) => {
+                if (err || eventResults.length === 0) {
+                  return res.status(201).json({
+                    message:
+                      "Event created successfully (but could not retrieve details)",
+                    event_id: results.insertId,
+                  });
+                }
+
+                res.status(201).json({
+                  message: "Event created successfully",
+                  event: eventResults[0],
+                });
+              }
+            );
           }
         );
       }
