@@ -1756,7 +1756,7 @@ app.get('/api/events/:eventId/userrating', authenticateUser, async (req, res) =>
         rating: results[0].rating,
       };
 
-      res.status(200).json(ratingData);
+      res.status(200).json({rating: ratingData});
     });
 
   } catch (error) {
