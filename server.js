@@ -1723,7 +1723,7 @@ app.delete("/api/events/:id/ratings", (req, res) => {
 });
 
 // Get a users rating for an event
-app.get('/api/events/:eventId/user-rating', authenticateUser, async (req, res) => {
+app.get('/api/events/:eventId/userrating', authenticateUser, async (req, res) => {
   try {
     const eventId = req.params.eventId;
     const userId = req.user.id;
