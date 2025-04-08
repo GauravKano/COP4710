@@ -56,8 +56,28 @@ const EventModal: React.FC<{
     handleGetMyRating();
   }, []);
 
-  const handleGetMyRating = () => {
-    setMyRating({ id: 3, rating: 1 });
+  const handleGetMyRating = async () => {
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/events/${event.id}/userrating`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to get user's rating");
+      }
+
+      const data = await response.json();
+      setMyRating(data.rating);
+    } catch (error) {
+      console.error("Error fetching user rating:", error);
+    }
   };
 
   const handleAddRating = async (index: number) => {

@@ -3,6 +3,7 @@ import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router";
 import JoinRso from "../components/JoinRso";
 import CreateRso from "../components/CreateRso";
+import { IoMdExit } from "react-icons/io";
 
 type user = {
   id?: number;
@@ -110,6 +111,31 @@ const RsoDashboard = () => {
     }
   };
 
+  const handleExitRso = async (rsoId: number) => {
+    // Exit Rso API here
+    try {
+      const response = await fetch(
+        `http://35.175.224.17:8080/api/rsos/${rsoId}/leave`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userData?.token || ""}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await response.json();
+        throw new Error(errorMessage.message || "Failed to leave rso");
+      }
+
+      setRsos((prev) => prev.filter((rso) => rso.id !== rsoId));
+    } catch (error) {
+      console.error("Error exiting RSO:", error);
+    }
+  };
+
   useEffect(() => {
     getCookieData();
   }, []);
@@ -142,16 +168,24 @@ const RsoDashboard = () => {
               {rsos.map((rso, index) => (
                 <div
                   key={index}
-                  className="border rounded-lg shadow-sm py-4 px-6"
+                  className="border rounded-lg shadow-sm py-4 px-6 flex gap-2 items-center justify-between"
                 >
-                  <h2 className="text-lg font-semibold">{rso.name}</h2>
-                  <p className="text-sm">
-                    Role:{" "}
-                    {userData && userData.id === rso.adminId
-                      ? "Admin"
-                      : "Member"}
-                  </p>
-                  <p className="text-sm capitalize">Status: {rso.status}</p>
+                  <div>
+                    <h2 className="text-lg font-semibold">{rso.name}</h2>
+                    <p className="text-sm">
+                      Role:{" "}
+                      {userData && userData.id === rso.adminId
+                        ? "Admin"
+                        : "Member"}
+                    </p>
+                    <p className="text-sm capitalize">Status: {rso.status}</p>
+                  </div>
+                  <button
+                    className="px-2.5 py-1.5 hover:bg-gray-200 rounded-md"
+                    onClick={() => handleExitRso(rso.id)}
+                  >
+                    <IoMdExit className="w-[25px] h-[25px]" />
+                  </button>
                 </div>
               ))}
             </>
