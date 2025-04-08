@@ -1745,9 +1745,9 @@ app.get('/api/events/:eventId/userrating', authenticateUser, async (req, res) =>
       }
 
       if (results.length === 0) {
-        return res.status(404).json({ 
+        return res.status(200).json({ 
           message: 'No rating found for this user and event',
-          hasRated: false
+          rating: null,
         });
       }
 
