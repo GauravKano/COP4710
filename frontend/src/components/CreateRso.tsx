@@ -143,9 +143,7 @@ const CreateRso: React.FC<{
               <button
                 className="text-sm text-red-600 hover:text-red-800 hover:bg-gray-100 cursor-pointer p-1.5"
                 onClick={() => {
-                  const newEmails = memberEmails.filter(
-                    (email, i) => i !== index
-                  );
+                  const newEmails = memberEmails.filter((_, i) => i !== index);
                   setMemberEmails(newEmails);
                   if (newEmails.length === 0) {
                     newEmails.push("");

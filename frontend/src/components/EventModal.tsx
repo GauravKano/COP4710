@@ -218,7 +218,7 @@ const EventModal: React.FC<{
             </button>
           </div>
           <div className="flex justify-center items-center gap-3.5">
-            {[...Array(5)].map((star, index) => (
+            {[...Array(5)].map((_, index) => (
               <FaStar
                 key={index}
                 className={`cursor-pointer text-2xl ${
