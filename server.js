@@ -1754,7 +1754,6 @@ app.get('/api/events/:eventId/userrating', authenticateUser, async (req, res) =>
       const ratingData = {
         rating_id: results[0].rating_id,
         rating: results[0].rating,
-        hasRated: true
       };
 
       res.status(200).json(ratingData);
