@@ -33,8 +33,8 @@ const CreateEvent: React.FC<{
   const [contactEmail, setContactEmail] = useState<string>("");
   const [locationName, setLocationName] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  const [latitude, setLatitude] = useState<number>(39.8283);
-  const [longitude, setLongitude] = useState<number>(-98.5795);
+  const [latitude, setLatitude] = useState<number | string>(39.8283);
+  const [longitude, setLongitude] = useState<number | string>(-98.5795);
 
   useEffect(() => {
     // Get rso that user is admin for API here
@@ -107,6 +107,10 @@ const CreateEvent: React.FC<{
       setError("Please enter a valid email address.");
     } else if (!locationName.trim()) {
       setError("Location name cannot be empty.");
+    } else if (latitude === "" || isNaN(Number(latitude))) {
+      setError("Latitude cannot be empty.");
+    } else if (longitude === "" || isNaN(Number(longitude))) {
+      setError("Longitude cannot be empty.");
     } else {
       // const eventId = Create Event API here
       try {
@@ -140,19 +144,21 @@ const CreateEvent: React.FC<{
         const data = await response.json();
         const date = new Date(data.event.date_time);
 
-        updateEvents(
-          data.event.id,
-          data.event.name,
-          date.toLocaleString("en-US", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          data.event.event_type as "public" | "private" | "rso"
-        );
+        if (eventType !== "public") {
+          updateEvents(
+            data.event.id,
+            data.event.name,
+            date.toLocaleString("en-US", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            }),
+            data.event.event_type as "public" | "private" | "rso"
+          );
+        }
         closeModal();
       } catch (error) {
         console.error("Error during create event:", error);
@@ -301,7 +307,11 @@ const CreateEvent: React.FC<{
               step={"any"}
               placeholder="Enter Latitude"
               value={latitude}
-              onChange={(e) => setLatitude(Number(e.target.value))}
+              onChange={(e) =>
+                setLatitude(
+                  e.target.value.trim() === "" ? "" : Number(e.target.value)
+                )
+              }
               className="w-full px-3 py-1.5 border rounded-md"
             />
           </div>
@@ -313,13 +323,20 @@ const CreateEvent: React.FC<{
               step={"any"}
               placeholder="Enter Latitude"
               value={longitude}
-              onChange={(e) => setLongitude(Number(e.target.value))}
+              onChange={(e) =>
+                setLongitude(
+                  e.target.value.trim() === "" ? "" : Number(e.target.value)
+                )
+              }
               className="w-full px-3 py-1.5 border rounded-md"
             />
           </div>
 
           <MapContainer
-            center={[latitude, longitude]}
+            center={[
+              typeof latitude === "number" ? latitude : 39.8283,
+              typeof longitude === "number" ? longitude : -98.5795,
+            ]}
             zoom={3}
             scrollWheelZoom={true}
           >
@@ -327,18 +344,20 @@ const CreateEvent: React.FC<{
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <Marker
-              position={[latitude, longitude]}
-              draggable={true}
-              eventHandlers={{
-                dragend: (event) => {
-                  const marker = event.target;
-                  const position = marker.getLatLng();
-                  setLatitude(position.lat);
-                  setLongitude(position.lng);
-                },
-              }}
-            ></Marker>
+            {typeof latitude === "number" && typeof longitude === "number" && (
+              <Marker
+                position={[latitude, longitude]}
+                draggable={true}
+                eventHandlers={{
+                  dragend: (event) => {
+                    const marker = event.target;
+                    const position = marker.getLatLng();
+                    setLatitude(position.lat);
+                    setLongitude(position.lng);
+                  },
+                }}
+              ></Marker>
+            )}
           </MapContainer>
         </div>
 
