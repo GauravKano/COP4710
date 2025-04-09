@@ -28,6 +28,8 @@ CREATE TABLE RSOs (
     admin_id INT NOT NULL,
     FOREIGN KEY (university_id) REFERENCES Universities(id) ON DELETE CASCADE,
     FOREIGN KEY (admin_id) REFERENCES Users(id) ON DELETE CASCADE
+    CASCADE
+    CONSTRAINT unique_rso_student UNIQUE (rso_id, student_id)
 );
 
 CREATE TABLE RSO_Members (
@@ -43,6 +45,7 @@ CREATE TABLE Events (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     date_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
     location_name VARCHAR(255) NOT NULL,
     latitude DECIMAL(9,6) NOT NULL,
     longitude DECIMAL(9,6) NOT NULL,
