@@ -37,9 +37,7 @@ const Navbar: React.FC<{ loggedIn: boolean }> = ({ loggedIn }) => {
 
   return (
     <nav className="py-3.5 pl-7 pr-5 bg-gray-300 flex items-center align-middle">
-      <span className="font-semibold text-xl mr-5 text-nowrap">
-        Project Name
-      </span>
+      <span className="font-semibold text-xl mr-5 text-nowrap">COP4710</span>
 
       <div className="hidden md:flex items-center gap-3.5 grow">
         <Link to="/dashboard">
