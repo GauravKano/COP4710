@@ -108,9 +108,9 @@ const CreateEvent: React.FC<{
     } else if (!locationName.trim()) {
       setError("Location name cannot be empty.");
     } else if (latitude === "" || isNaN(Number(latitude))) {
-      setError("Latitude cannot be empty.");
+      setError("Invalid Latitude.");
     } else if (longitude === "" || isNaN(Number(longitude))) {
-      setError("Longitude cannot be empty.");
+      setError("Invalid Longitude.");
     } else {
       // const eventId = Create Event API here
       try {
@@ -138,6 +138,12 @@ const CreateEvent: React.FC<{
 
         if (!response.ok) {
           const errorMessage = await response.json();
+          if (errorMessage.conflictingEvent) {
+            console.error(
+              "Error creating event:",
+              errorMessage.conflictingEvent
+            );
+          }
           throw new Error(errorMessage.message || "Failed to create event");
         }
 
