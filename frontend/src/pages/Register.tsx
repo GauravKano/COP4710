@@ -15,6 +15,7 @@ type user = {
   phone?: string;
   universityId?: number;
   userType?: "super_admin" | "admin" | "student";
+  token?: string;
 };
 
 const Register = () => {
@@ -52,9 +53,17 @@ const Register = () => {
       if (key.trim() === "universityId") {
         cookieObject.universityId = parseInt(value.trim());
       }
+      if (key.trim() === "token") {
+        cookieObject.token = value.trim();
+      }
     });
 
-    if (cookieObject && cookieObject.id && cookieObject.userType) {
+    if (
+      cookieObject &&
+      cookieObject.id &&
+      cookieObject.userType &&
+      cookieObject.token
+    ) {
       navigate("/dashboard");
     }
   };
