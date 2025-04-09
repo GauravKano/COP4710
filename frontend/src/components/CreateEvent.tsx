@@ -166,10 +166,6 @@ const CreateEvent: React.FC<{
           );
         }
 
-        if (userType === "student") {
-          document.cookie = `userType=admin; path=/`;
-        }
-
         closeModal();
       } catch (error) {
         console.error("Error during create event:", error);

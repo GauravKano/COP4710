@@ -15,6 +15,16 @@ const CreateRso: React.FC<{
   }) => void;
   universityId: number | null;
   token: string;
+  setUserData: React.Dispatch<
+    React.SetStateAction<{
+      id?: number;
+      username?: string;
+      email?: string;
+      universityId?: number | null;
+      userType?: "super_admin" | "admin" | "student";
+      token?: string;
+    } | null>
+  >;
 }> = ({
   closeModal,
   userEmail,
@@ -23,6 +33,7 @@ const CreateRso: React.FC<{
   token,
   universityId,
   updateRso,
+  setUserData,
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [rsoName, setRsoName] = useState<string>("");
@@ -91,6 +102,16 @@ const CreateRso: React.FC<{
         adminId: userId,
         status: data.member_count >= 5 ? "active" : "inactive",
       });
+
+      if (userType === "student") {
+        document.cookie = `userType=admin; path=/`;
+        setUserData((prev) => {
+          if (prev) {
+            return { ...prev, userType: "admin" };
+          }
+          return prev;
+        });
+      }
 
       closeModal();
     } catch (error) {

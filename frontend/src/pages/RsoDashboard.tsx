@@ -216,6 +216,7 @@ const RsoDashboard = () => {
           updateRso={(newRso: Rso) => {
             setRsos((prev) => [newRso, ...prev]);
           }}
+          setUserData={setUserData}
         />
       )}
     </div>
