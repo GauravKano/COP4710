@@ -165,6 +165,11 @@ const CreateEvent: React.FC<{
             data.event.event_type as "public" | "private" | "rso"
           );
         }
+
+        if (userType === "student") {
+          document.cookie = `userType=admin; path=/`;
+        }
+
         closeModal();
       } catch (error) {
         console.error("Error during create event:", error);
